@@ -23,7 +23,9 @@ cp .env.example .env   # then fill in the values (see comments in the file)
 
 ### 2. Supabase
 
-1. Create a project at supabase.com: region **South Asia (Mumbai)**.
+1. Create a project at supabase.com: region **South Asia (Mumbai)**, and tick
+   **Enable automatic RLS** under Security. The second migration locks down the
+   `rls_auto_enable()` function that this option creates, so `db:push` fails without it.
 2. Link this folder to it and apply the database migrations:
    ```bash
    npx supabase login
@@ -32,8 +34,16 @@ cp .env.example .env   # then fill in the values (see comments in the file)
    npm run db:types    # regenerates src/types/database.ts from the real database
    ```
 3. In the dashboard, under **Authentication → Sign In / Providers**:
-   - **Phone:** enable it. Under test phone numbers, add e.g. `919876543210` with code `123456`,
-     so you can sign in without a real SMS provider.
+   - **Phone:** enable it, then set:
+     - **Test Phone Numbers and OTPs:** `919876543210=123456`, so you can sign in without
+       a real SMS provider. Also set **Test OTPs Valid Until**, because test numbers stop
+       working after that date.
+     - **SMS OTP Expiry:** `300` (5 minutes). The default of 60 seconds is too short when
+       SMS arrives late on a weak signal.
+     - **Twilio fields:** the dashboard won't save Phone until the 3 Twilio fields have
+       values, even if you only use test numbers. For local testing, type `placeholder` in
+       each. Real numbers won't receive an SMS until a real provider is configured (which
+       in India also needs DLT registration).
    - **Email:** disable it. Phone is our only sign-in method, and leaving email on would let
      people create accounts through the API another way.
 

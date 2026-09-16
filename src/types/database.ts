@@ -169,6 +169,27 @@ export type Database = {
           },
         ]
       }
+      explored_squares: {
+        Row: {
+          cell_x: number
+          cell_y: number
+          first_seen_at: string
+          user_id: string
+        }
+        Insert: {
+          cell_x: number
+          cell_y: number
+          first_seen_at?: string
+          user_id: string
+        }
+        Update: {
+          cell_x?: number
+          cell_y?: number
+          first_seen_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       modifications: {
         Row: {
           brand: string | null
@@ -245,6 +266,53 @@ export type Database = {
           },
         ]
       }
+      trips: {
+        Row: {
+          created_at: string
+          distance_m: number
+          duration_s: number
+          ended_at: string
+          id: string
+          max_speed_kph: number | null
+          route: unknown
+          started_at: string
+          user_id: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          distance_m?: number
+          duration_s?: number
+          ended_at: string
+          id?: string
+          max_speed_kph?: number | null
+          route?: unknown
+          started_at: string
+          user_id: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          distance_m?: number
+          duration_s?: number
+          ended_at?: string
+          id?: string
+          max_speed_kph?: number | null
+          route?: unknown
+          started_at?: string
+          user_id?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trips_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_photos: {
         Row: {
           created_at: string
@@ -315,7 +383,23 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      my_explored_stats: {
+        Row: {
+          squares: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      my_trip_stats: {
+        Row: {
+          best_speed_kph: number | null
+          total_distance_m: number | null
+          total_duration_s: number | null
+          trips: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       crew_of_convoy: { Args: { target_convoy_id: string }; Returns: string }
@@ -329,6 +413,19 @@ export type Database = {
         Returns: boolean
       }
       join_crew_by_code: { Args: { code: string }; Returns: string }
+      record_trip: {
+        Args: {
+          p_cells: Json
+          p_distance_m: number
+          p_duration_s: number
+          p_ended_at: string
+          p_max_speed_kph: number
+          p_route_geojson: Json
+          p_started_at: string
+          p_vehicle_id: string
+        }
+        Returns: string
+      }
       set_primary_vehicle: {
         Args: { target_vehicle_id: string }
         Returns: undefined

@@ -134,6 +134,25 @@ supabase/migrations/  Database changes as SQL, applied in order
 - **Maps** go through `src/services/maps/AppMap.tsx`, currently react-native-maps (Apple Maps on
   iPhone, works in Expo Go). Testing Mapbox later is a change to that one file.
 
+## Drives and the explored map (Phase 4)
+
+- **`trips`** holds one row per recorded drive: car, times, distance, duration, top speed and a
+  simplified route line. The individual GPS readings are **not** stored, so there's no
+  second-by-second log of anyone's movements.
+- **`explored_squares`** is the fog-of-war: the world is cut into 0.001° squares (about 110m in
+  India) and any square you drive through is unlocked forever. Re-driving a road is free, because
+  the primary key already covers it.
+- **Saving a drive** goes through the `record_trip` function, so the drive and its squares are
+  written together. It also refuses to record a drive in a car that isn't yours.
+- **Totals** come from the `my_trip_stats` and `my_explored_stats` views, which use
+  `security_invoker` so each person only ever sees their own numbers.
+- **Erasing** is possible: a drive can be deleted, and the whole explored map can be wiped.
+- **The map draws squares inside the visible region only**, capped, and stops drawing when zoomed
+  too far out.
+- **Simulated drives:** in development there's a switch that replays a Bandra → Sea Link → Worli
+  route through the same location wrapper the real GPS uses. It keeps testing on Indian roads
+  regardless of where the developer is, and it never appears in a real build (`__DEV__` only).
+
 ## House rules
 
 1. **Server data vs device state.** Anything stored in Supabase goes through TanStack Query.

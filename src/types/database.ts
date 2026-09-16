@@ -41,6 +41,73 @@ export type Database = {
         }
         Relationships: []
       }
+      crew_members: {
+        Row: {
+          crew_id: string
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          crew_id: string
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          crew_id?: string
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crew_members_crew_id_fkey"
+            columns: ["crew_id"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crews: {
+        Row: {
+          city_id: string
+          created_at: string
+          id: string
+          invite_code: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          city_id: string
+          created_at?: string
+          id?: string
+          invite_code?: string
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          city_id?: string
+          created_at?: string
+          id?: string
+          invite_code?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crews_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       modifications: {
         Row: {
           brand: string | null
@@ -190,10 +257,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_invite_code: { Args: never; Returns: string }
+      is_crew_member: {
+        Args: { target_crew_id: string; target_user_id: string }
+        Returns: boolean
+      }
+      is_crew_owner: {
+        Args: { target_crew_id: string; target_user_id: string }
+        Returns: boolean
+      }
+      join_crew_by_code: { Args: { code: string }; Returns: string }
       set_primary_vehicle: {
         Args: { target_vehicle_id: string }
         Returns: undefined
       }
+      shares_crew_with: { Args: { other_user_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

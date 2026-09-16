@@ -36,6 +36,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: variant.name,
     slug: 'fast-boys-india',
+    // The Expo account that owns this project (expo.dev/accounts/lohitsaun/projects/fast-boys-india).
+    owner: 'lohitsaun',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
@@ -75,6 +77,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     experiments: {
       // Lets TypeScript catch links to screens that don't exist, e.g. router.push('/garaje').
       typedRoutes: true,
+    },
+    extra: {
+      ...config.extra,
+      eas: {
+        // Links this app to its project on expo.dev. Needed for EAS builds, and for Expo Go
+        // to open the project when you're logged in. Not a secret.
+        projectId: '0de7fa0f-d1f1-4b3c-8052-b2e392bf492b',
+      },
     },
   };
 };

@@ -148,6 +148,29 @@ export async function deletePhotoRow(photoId: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Closes gaps after a photo is deleted, so the remaining photos stay numbered
+ * 1, 2, 3... Without this, deleting the first photo would leave a car with no
+ * position 1, and the garage list would show no cover.
+ */
+export async function resequencePhotos(vehicleId: string): Promise<void> {
+  const photos = await fetchPhotos(vehicleId);
+
+  await Promise.all(
+    photos.map((photo, index) => {
+      const position = index + 1;
+      if (photo.position === position) return Promise.resolve();
+      return supabase
+        .from('vehicle_photos')
+        .update({ position })
+        .eq('id', photo.id)
+        .then(({ error }) => {
+          if (error) throw error;
+        });
+    }),
+  );
+}
+
 /** Removes the actual image files from storage. */
 export async function deletePhotoFiles(storagePaths: string[]): Promise<void> {
   if (storagePaths.length === 0) return;
@@ -184,13 +207,17 @@ export async function fetchCoverPhotos(vehicleIds: string[]): Promise<Record<str
   if (vehicleIds.length === 0) return {};
   const { data, error } = await supabase
     .from('vehicle_photos')
-    .select('vehicle_id, storage_path')
+    .select('vehicle_id, storage_path, position')
     .in('vehicle_id', vehicleIds)
-    .eq('position', 1);
+    .order('position');
   if (error) throw error;
 
+  // First photo wins. Reading the lowest position rather than insisting on
+  // exactly 1 means a car still shows a cover even if numbering ever slips.
   const covers: Record<string, string> = {};
-  for (const row of data) covers[row.vehicle_id] = row.storage_path;
+  for (const row of data) {
+    if (!covers[row.vehicle_id]) covers[row.vehicle_id] = row.storage_path;
+  }
   return covers;
 }
 

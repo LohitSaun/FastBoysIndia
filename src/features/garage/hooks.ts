@@ -19,6 +19,7 @@ import {
   deletePhotoFiles,
   deletePhotoRow,
   deleteVehicle,
+  resequencePhotos,
   fetchCoverPhotos,
   fetchModification,
   fetchModifications,
@@ -170,6 +171,8 @@ export function useDeletePhoto(vehicleId: string) {
     mutationFn: async (photo: VehiclePhoto) => {
       await deletePhotoRow(photo.id);
       await deletePhotoFiles([photo.storage_path]);
+      // Keep the remaining photos numbered 1..n so the cover photo still exists.
+      await resequencePhotos(vehicleId);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: garageKeys.photos(vehicleId) }),
     onError: logInDev,

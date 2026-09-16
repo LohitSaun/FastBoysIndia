@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { selectUserId } from '@/features/auth/authSlice';
@@ -47,8 +47,10 @@ export function useSquaresInView(bounds: {
 } | null) {
   return useQuery({
     queryKey: tripKeys.squares(bounds ? Object.values(bounds).join(',') : 'none'),
-    queryFn: bounds ? () => fetchSquaresInView(bounds) : undefined,
-    enabled: bounds !== null,
+    // skipToken is how this project says "nothing to fetch yet". Passing an
+    // undefined function with enabled:false looks equivalent but TanStack Query
+    // rejects it.
+    queryFn: bounds ? () => fetchSquaresInView(bounds) : skipToken,
     staleTime: 60_000,
   });
 }

@@ -16,6 +16,7 @@ export default function CrewsLayout() {
       <Stack.Screen name="new" options={{ title: 'Create crew' }} />
       <Stack.Screen name="join" options={{ title: 'Join a crew' }} />
       <Stack.Screen name="[id]/index" options={{ title: 'Crew' }} />
+      <Stack.Screen name="[id]/convoy" options={{ title: 'Drive' }} />
     </Stack>
   );
 }

@@ -115,6 +115,25 @@ supabase/migrations/  Database changes as SQL, applied in order
 - **The main car** is switched through the `set_primary_vehicle` database function, so there is
   never a moment with two main cars.
 
+## Crews and convoys (Phase 3)
+
+- **Crews:** `crews` + `crew_members`. Joining goes through the `join_crew_by_code` database
+  function, and there is deliberately no insert rule on `crew_members`, so nobody can add
+  themselves to a crew whose id they happened to learn.
+- **Crew mates** can see each other's display name, main car and that car's photos. Nothing else:
+  other cars, their photos and all mods stay private.
+- **Owners** delete a crew rather than leaving it, which the database enforces.
+- **Convoys:** `convoys` + `convoy_participants`, one running convoy per crew (a partial unique
+  index). Only the person who started it, or the crew owner, can end it.
+- **Live positions are never stored.** They travel over a Supabase Realtime presence channel
+  named `convoy:<id>` and disappear when phones stop publishing. Recording drives is Phase 4.
+- **Ghost Mode** stops publishing and withdraws the position already out there, so the dot
+  vanishes for everyone within a couple of seconds. Switching it off republishes immediately.
+- **Location is foreground only** for now, through `src/services/location/`. Swapping in the paid
+  background tracker later means writing one more file there and changing a single line.
+- **Maps** go through `src/services/maps/AppMap.tsx`, currently react-native-maps (Apple Maps on
+  iPhone, works in Expo Go). Testing Mapbox later is a change to that one file.
+
 ## House rules
 
 1. **Server data vs device state.** Anything stored in Supabase goes through TanStack Query.

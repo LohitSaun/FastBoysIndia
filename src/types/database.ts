@@ -41,6 +41,67 @@ export type Database = {
         }
         Relationships: []
       }
+      convoy_participants: {
+        Row: {
+          convoy_id: string
+          joined_at: string
+          left_at: string | null
+          user_id: string
+        }
+        Insert: {
+          convoy_id: string
+          joined_at?: string
+          left_at?: string | null
+          user_id: string
+        }
+        Update: {
+          convoy_id?: string
+          joined_at?: string
+          left_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convoy_participants_convoy_id_fkey"
+            columns: ["convoy_id"]
+            isOneToOne: false
+            referencedRelation: "convoys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      convoys: {
+        Row: {
+          crew_id: string
+          ended_at: string | null
+          id: string
+          started_at: string
+          started_by: string
+        }
+        Insert: {
+          crew_id: string
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          started_by: string
+        }
+        Update: {
+          crew_id?: string
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          started_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convoys_crew_id_fkey"
+            columns: ["crew_id"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crew_members: {
         Row: {
           crew_id: string
@@ -257,6 +318,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      crew_of_convoy: { Args: { target_convoy_id: string }; Returns: string }
       generate_invite_code: { Args: never; Returns: string }
       is_crew_member: {
         Args: { target_crew_id: string; target_user_id: string }

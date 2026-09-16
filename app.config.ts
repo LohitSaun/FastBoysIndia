@@ -75,6 +75,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
       ],
       [
+        // What iOS and Android show when the app asks for location. Expo Go uses
+        // its own wording; this applies once we build the app itself.
+        'expo-location',
+        {
+          locationAlwaysAndWhenInUsePermission:
+            'Fast Boys India shares your location with your crew while you are on a drive.',
+          locationWhenInUsePermission:
+            'Fast Boys India shares your location with your crew while you are on a drive.',
+        },
+      ],
+      [
         // Wires Sentry into the native iOS/Android projects and uploads source maps during
         // EAS builds so crash reports show our real file names and line numbers.
         '@sentry/react-native/expo',

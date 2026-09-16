@@ -21,6 +21,7 @@ import {
   useLeaveCrew,
   useRemoveMember,
 } from '@/features/crews/hooks';
+import { useActiveConvoy, useJoinConvoy, useStartConvoy } from '@/features/convoys/hooks';
 import { useActiveCities } from '@/features/profile/hooks';
 import { useAppSelector } from '@/store';
 import { selectUserId } from '@/features/auth/authSlice';
@@ -34,6 +35,10 @@ export default function CrewDetailScreen() {
   const crew = useCrew(id);
   const members = useCrewMembers(id);
   const cities = useActiveCities();
+
+  const activeConvoy = useActiveConvoy(id);
+  const startConvoy = useStartConvoy(id);
+  const joinConvoy = useJoinConvoy(id);
 
   const leaveCrew = useLeaveCrew();
   const deleteCrew = useDeleteCrew();
@@ -123,6 +128,44 @@ export default function CrewDetailScreen() {
             Anyone with this code can join. Share it in WhatsApp and they type it in the app.
           </Text>
           <Button title="Share invite" onPress={handleShare} />
+        </View>
+
+        {/* ----------------------------------------------------------- drive */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Drive</Text>
+
+          {activeConvoy.data ? (
+            <>
+              <Text style={styles.hint}>A drive is running right now.</Text>
+              <Button
+                title="Open the live map"
+                onPress={() =>
+                  // Make sure we're on the participant list, then show the map.
+                  joinConvoy.mutate(activeConvoy.data!.id, {
+                    onSuccess: () =>
+                      router.push({ pathname: '/crews/[id]/convoy', params: { id: data.id } }),
+                  })
+                }
+                loading={joinConvoy.isPending}
+              />
+            </>
+          ) : (
+            <>
+              <Text style={styles.hint}>
+                Starting a drive shares your location with this crew while the app is open.
+              </Text>
+              <Button
+                title="Start a drive"
+                onPress={() =>
+                  startConvoy.mutate(undefined, {
+                    onSuccess: () =>
+                      router.push({ pathname: '/crews/[id]/convoy', params: { id: data.id } }),
+                  })
+                }
+                loading={startConvoy.isPending}
+              />
+            </>
+          )}
         </View>
 
         {/* --------------------------------------------------------- members */}

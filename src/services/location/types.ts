@@ -17,6 +17,8 @@ export type LocationPermission = 'granted' | 'denied';
 
 export type LocationTracker = {
   requestPermission(): Promise<LocationPermission>;
+  /** Where the phone is right now, for one-off needs like reporting a pothole. */
+  current(): Promise<DrivePosition | null>;
   /**
    * Starts following the phone's location. Returns a function that stops it.
    * Only works while the app is open; background tracking comes later.

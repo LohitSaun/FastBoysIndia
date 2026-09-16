@@ -8,17 +8,44 @@ import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { useVehicles } from '@/features/garage/hooks';
 import {
+  HAZARD_KINDS,
+  HAZARD_LABELS,
+  type HazardKind,
+  type NearbyHazard,
+} from '@/features/hazards/api';
+import {
+  useCameraWarning,
+  useHazardsNear,
+  useReportHazard,
+  useTier,
+  useVoteHazard,
+} from '@/features/hazards/hooks';
+import {
   useExploredCount,
   useSquaresInView,
   useTripRecorder,
   useTripStats,
 } from '@/features/trips/hooks';
 import { CELL_SIZE_DEG, cellCorners, formatDistance, formatDuration } from '@/features/trips/grid';
-import { AppMap } from '@/services/maps/AppMap';
+import { trackerFor } from '@/services/location';
+import { AppMap, type AppMapMarker } from '@/services/maps/AppMap';
 import { colors, radius, spacing, typography } from '@/theme';
 
 /** Zoomed out past this, there would be too many squares to draw usefully. */
 const MAX_SPAN_DEG = 0.35;
+
+/**
+ * "20 min ago", "3 h ago", "2 days ago".
+ *
+ * Deliberately outside the component: it reads the clock, and React expects
+ * anything called while rendering to give the same answer every time.
+ */
+function describeAge(createdAt: string): string {
+  const minutes = Math.round((Date.now() - new Date(createdAt).getTime()) / 60000);
+  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 60 * 24) return `${Math.round(minutes / 60)} h ago`;
+  return `${Math.round(minutes / (60 * 24))} days ago`;
+}
 
 export default function ExploredMapScreen() {
   const router = useRouter();
@@ -29,6 +56,26 @@ export default function ExploredMapScreen() {
   const stats = useTripStats();
   const exploredCount = useExploredCount();
   const recorder = useTripRecorder({ simulated });
+
+  const tier = useTier();
+  const isSubscriber = tier.data === 'pro' || tier.data === 'premium';
+
+  // Hazards around wherever the map is looking, or around you while driving.
+  const hazardCentre = recorder.lastPosition
+    ? { latitude: recorder.lastPosition.latitude, longitude: recorder.lastPosition.longitude }
+    : region
+      ? { latitude: region.latitude, longitude: region.longitude }
+      : null;
+  const hazards = useHazardsNear(hazardCentre);
+  const reportHazard = useReportHazard();
+  const voteHazard = useVoteHazard();
+
+  // The paid extra: a warning when a speed camera is coming up.
+  const cameraWarning = useCameraWarning(
+    recorder.lastPosition,
+    hazards.data,
+    isSubscriber && recorder.status === 'recording',
+  );
 
   const mainCar = vehicles.data?.find((vehicle) => vehicle.is_primary) ?? vehicles.data?.[0] ?? null;
 
@@ -53,6 +100,67 @@ export default function ExploredMapScreen() {
 
   const isRecording = recorder.status === 'recording';
 
+  /** Tapping a pin: what it is, how old, and the chance to vote on it. */
+  const showHazard = (hazard: NearbyHazard) => {
+    Alert.alert(
+      HAZARD_LABELS[hazard.kind],
+      [
+        hazard.note,
+        `Reported ${describeAge(hazard.created_at)}`,
+        hazard.gone_votes > 0 ? `${hazard.gone_votes} said it's gone` : null,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+      [
+        { text: 'Close', style: 'cancel' },
+        {
+          text: "It's gone",
+          onPress: () => voteHazard.mutate({ hazardId: hazard.id, vote: 'gone' }),
+        },
+        {
+          text: 'Still there',
+          onPress: () => voteHazard.mutate({ hazardId: hazard.id, vote: 'still_there' }),
+        },
+      ],
+    );
+  };
+
+  /** Report something at wherever the phone currently is. */
+  const handleReport = () => {
+    const kindButtons = HAZARD_KINDS.filter(
+      // Cameras are only worth reporting by people who can see them.
+      (kind) => kind !== 'speed_camera' || isSubscriber,
+    ).map((kind) => ({
+      text: HAZARD_LABELS[kind],
+      onPress: () => void submitReport(kind),
+    }));
+
+    Alert.alert('Report what you see', 'It stays anonymous.', [
+      ...kindButtons,
+      { text: 'Cancel', style: 'cancel' as const },
+    ]);
+  };
+
+  const submitReport = async (kind: HazardKind) => {
+    const tracker = trackerFor(simulated);
+    const permission = await tracker.requestPermission();
+    if (permission !== 'granted') {
+      Alert.alert('Location needed', 'Allow location so the report lands in the right place.');
+      return;
+    }
+
+    const position = recorder.lastPosition ?? (await tracker.current());
+    if (!position) {
+      Alert.alert('No location yet', 'Wait a moment for a location reading and try again.');
+      return;
+    }
+
+    reportHazard.mutate(
+      { kind, latitude: position.latitude, longitude: position.longitude, note: null },
+      { onSuccess: () => Alert.alert('Thanks', 'Other drivers will see it.') },
+    );
+  };
+
   const handleStart = () => {
     void recorder.start(mainCar?.id ?? null);
   };
@@ -74,19 +182,30 @@ export default function ExploredMapScreen() {
               ? { latitude: recorder.lastPosition.latitude, longitude: recorder.lastPosition.longitude }
               : null
           }
-          markers={
-            recorder.lastPosition
+          markers={[
+            ...(recorder.lastPosition
               ? [
                   {
                     id: 'me',
                     latitude: recorder.lastPosition.latitude,
                     longitude: recorder.lastPosition.longitude,
                     label: 'You',
-                    kind: 'me',
+                    kind: 'me' as const,
                   },
                 ]
-              : []
-          }
+              : []),
+            ...(hazards.data ?? []).map(
+              (hazard): AppMapMarker => ({
+                id: hazard.id,
+                latitude: hazard.latitude,
+                longitude: hazard.longitude,
+                label: HAZARD_LABELS[hazard.kind],
+                kind: 'other',
+                tint: hazard.kind === 'speed_camera' ? '#4DA3FF' : '#FFC107',
+                onPress: () => showHazard(hazard),
+              }),
+            ),
+          ]}
           onRegionSettled={setRegion}
         />
 
@@ -96,6 +215,15 @@ export default function ExploredMapScreen() {
           </View>
         ) : null}
       </View>
+
+      {cameraWarning ? (
+        <View style={styles.warningBanner}>
+          <Ionicons name="camera" size={18} color={colors.onPrimary} />
+          <Text style={styles.warningBannerText}>
+            Speed camera in {cameraWarning.metres}m — check your speed
+          </Text>
+        </View>
+      ) : null}
 
       <View style={styles.panel}>
         {isRecording ? (
@@ -133,6 +261,15 @@ export default function ExploredMapScreen() {
             loading={recorder.status === 'starting' || recorder.isSaving}
           />
         )}
+
+        <View style={styles.reportRow}>
+          <Button title="Report a hazard" variant="secondary" onPress={handleReport} />
+          {!isSubscriber ? (
+            <Text style={styles.hint}>
+              Speed camera alerts while you drive are part of Pro.
+            </Text>
+          ) : null}
+        </View>
 
         <Pressable
           accessibilityRole="button"
@@ -213,6 +350,21 @@ const styles = StyleSheet.create({
   liveValue: { ...typography.body, color: colors.text, fontWeight: '700' },
   liveLabel: { ...typography.caption, color: colors.textMuted, fontSize: 11 },
   link: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'center' },
+  reportRow: { gap: spacing.xs },
+  warningBanner: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    right: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+  },
+  warningBannerText: { ...typography.label, color: colors.onPrimary },
   linkText: { ...typography.label, color: colors.primary },
   devRow: {
     flexDirection: 'row',

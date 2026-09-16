@@ -190,6 +190,68 @@ export type Database = {
         }
         Relationships: []
       }
+      hazard_votes: {
+        Row: {
+          created_at: string
+          hazard_id: string
+          user_id: string
+          vote: string
+        }
+        Insert: {
+          created_at?: string
+          hazard_id: string
+          user_id: string
+          vote: string
+        }
+        Update: {
+          created_at?: string
+          hazard_id?: string
+          user_id?: string
+          vote?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hazard_votes_hazard_id_fkey"
+            columns: ["hazard_id"]
+            isOneToOne: false
+            referencedRelation: "hazards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hazards: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          kind: string
+          location: unknown
+          note: string | null
+          removed_at: string | null
+          reporter_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          kind: string
+          location: unknown
+          note?: string | null
+          removed_at?: string | null
+          reporter_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          kind?: string
+          location?: unknown
+          note?: string | null
+          removed_at?: string | null
+          reporter_id?: string
+        }
+        Relationships: []
+      }
       modifications: {
         Row: {
           brand: string | null
@@ -265,6 +327,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subscriptions: {
+        Row: {
+          tier: string
+          updated_at: string
+          user_id: string
+          valid_until: string | null
+        }
+        Insert: {
+          tier?: string
+          updated_at?: string
+          user_id: string
+          valid_until?: string | null
+        }
+        Update: {
+          tier?: string
+          updated_at?: string
+          user_id?: string
+          valid_until?: string | null
+        }
+        Relationships: []
       }
       trips: {
         Row: {
@@ -403,7 +486,24 @@ export type Database = {
     }
     Functions: {
       crew_of_convoy: { Args: { target_convoy_id: string }; Returns: string }
+      current_tier: { Args: never; Returns: string }
       generate_invite_code: { Args: never; Returns: string }
+      hazard_lifetime: { Args: { p_kind: string }; Returns: string }
+      hazards_near: {
+        Args: {
+          p_include_cameras?: boolean
+          p_latitude: number
+          p_longitude: number
+          p_radius_m?: number
+        }
+        Returns: Database["public"]["CompositeTypes"]["hazard_nearby"][]
+        SetofOptions: {
+          from: "*"
+          to: "hazard_nearby"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       is_crew_member: {
         Args: { target_crew_id: string; target_user_id: string }
         Returns: boolean
@@ -413,6 +513,27 @@ export type Database = {
         Returns: boolean
       }
       join_crew_by_code: { Args: { code: string }; Returns: string }
+      leaderboard_for_city: {
+        Args: { p_city_id: string; p_limit?: number; p_period?: string }
+        Returns: Database["public"]["CompositeTypes"]["leaderboard_row"][]
+        SetofOptions: {
+          from: "*"
+          to: "leaderboard_row"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      leaderboard_for_crew: {
+        Args: { p_crew_id: string; p_limit?: number; p_period?: string }
+        Returns: Database["public"]["CompositeTypes"]["leaderboard_row"][]
+        SetofOptions: {
+          from: "*"
+          to: "leaderboard_row"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      my_home_city: { Args: never; Returns: string }
       record_trip: {
         Args: {
           p_cells: Json
@@ -426,17 +547,49 @@ export type Database = {
         }
         Returns: string
       }
+      report_hazard: {
+        Args: {
+          p_kind: string
+          p_latitude: number
+          p_longitude: number
+          p_note?: string
+        }
+        Returns: string
+      }
       set_primary_vehicle: {
         Args: { target_vehicle_id: string }
         Returns: undefined
       }
       shares_crew_with: { Args: { other_user_id: string }; Returns: boolean }
+      vote_hazard: {
+        Args: { p_hazard_id: string; p_vote: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
     }
     CompositeTypes: {
-      [_ in never]: never
+      hazard_nearby: {
+        id: string | null
+        kind: string | null
+        latitude: number | null
+        longitude: number | null
+        note: string | null
+        created_at: string | null
+        gone_votes: number | null
+        metres_away: number | null
+        reported_by_you: boolean | null
+      }
+      leaderboard_row: {
+        user_id: string | null
+        display_name: string | null
+        main_car: string | null
+        distance_m: number | null
+        squares: number | null
+        trips: number | null
+        is_you: boolean | null
+      }
     }
   }
 }

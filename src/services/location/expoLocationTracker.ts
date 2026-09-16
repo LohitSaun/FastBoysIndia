@@ -22,6 +22,19 @@ export const expoLocationTracker: LocationTracker = {
     return result.granted ? 'granted' : 'denied';
   },
 
+  async current() {
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.LocationAccuracy.High,
+    });
+    return {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+      speedKph: toKph(location.coords.speed),
+      heading: location.coords.heading,
+      timestamp: location.timestamp,
+    };
+  },
+
   async watch(onPosition) {
     const subscription = await Location.watchPositionAsync(
       {

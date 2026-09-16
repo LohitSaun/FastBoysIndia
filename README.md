@@ -153,6 +153,23 @@ supabase/migrations/  Database changes as SQL, applied in order
   route through the same location wrapper the real GPS uses. It keeps testing on Indian roads
   regardless of where the developer is, and it never appears in a real build (`__DEV__` only).
 
+## Hazards, speed cameras and tiers (Phase 5b)
+
+- **`hazards`** holds pothole, waterlogging, fog, speed camera and other reports, each with a
+  location and an expiry (fog hours, waterlogging a day, potholes weeks, cameras a year).
+- **Reports are anonymous.** The reporter is stored for abuse handling but never returned: the
+  table has no general read rule, and every read goes through `hazards_near()`, which returns the
+  hazard without the reporter. You can read your own reports, nobody else's.
+- **`hazard_votes`**: "still there" or "it's gone". Three "gone" votes retire a hazard.
+- **`subscriptions`** records each person's tier (free / pro / premium). **No app code can write
+  to it** — there are no insert or update rules — so a billing provider sets it later. For now it's
+  set by hand with admin SQL.
+- **Speed cameras are gated in the database**, not in the screens: `hazards_near()` leaves them out
+  unless the caller's tier is pro or premium. Hiding a button would prove nothing, since anyone can
+  call the API directly.
+- **Speed limits are deliberately not implemented.** There's no reliable open dataset of Indian
+  road speed limits, so the app warns about camera locations rather than claiming to know limits.
+
 ## House rules
 
 1. **Server data vs device state.** Anything stored in Supabase goes through TanStack Query.

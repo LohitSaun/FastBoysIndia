@@ -10,6 +10,9 @@ export type AppMapMarker = LatLng & {
   label: string;
   /** "me" is drawn in the app's orange; everyone else is plain. */
   kind: 'me' | 'other';
+  /** Overrides the pin colour, used for hazards. */
+  tint?: string;
+  onPress?: () => void;
 };
 
 type AppMapProps = {
@@ -81,7 +84,8 @@ export function AppMap({
           key={marker.id}
           coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
           title={marker.label}
-          pinColor={marker.kind === 'me' ? colors.primary : undefined}
+          pinColor={marker.tint ?? (marker.kind === 'me' ? colors.primary : undefined)}
+          onPress={marker.onPress}
         />
       ))}
     </MapView>

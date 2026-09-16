@@ -53,6 +53,11 @@ export function createSimulatedTracker(): LocationTracker {
       return 'granted'; // nothing real is being read
     },
 
+    async current() {
+      // The start of the pretend route, so reporting works while simulating.
+      return { ...ROUTE[0], speedKph: 0, heading: 0, timestamp: Date.now() };
+    },
+
     async watch(onPosition) {
       let leg = 0;
       let step = 0;

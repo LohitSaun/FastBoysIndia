@@ -25,7 +25,13 @@ const client = env.posthogApiKey
  * Every event name we send. Listing them here turns a typo like 'singed_up' into a
  * TypeScript error, and keeps the PostHog dashboard free of near-duplicate events.
  */
-type AnalyticsEvent = 'otp_requested' | 'signed_in' | 'signed_up';
+type AnalyticsEvent =
+  | 'otp_requested'
+  | 'signed_in'
+  | 'signed_up'
+  | 'vehicle_added'
+  | 'photo_added'
+  | 'mod_added';
 
 export const analytics = {
   track(event: AnalyticsEvent, properties?: Record<string, string | number | boolean>) {

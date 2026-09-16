@@ -41,6 +41,50 @@ export type Database = {
         }
         Relationships: []
       }
+      modifications: {
+        Row: {
+          brand: string | null
+          category: string
+          created_at: string
+          id: string
+          installed_on: string | null
+          notes: string | null
+          title: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          brand?: string | null
+          category: string
+          created_at?: string
+          id?: string
+          installed_on?: string | null
+          notes?: string | null
+          title: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          brand?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          installed_on?: string | null
+          notes?: string | null
+          title?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modifications_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -73,12 +117,83 @@ export type Database = {
           },
         ]
       }
+      vehicle_photos: {
+        Row: {
+          created_at: string
+          id: string
+          position: number
+          storage_path: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          position?: number
+          storage_path: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          position?: number
+          storage_path?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_photos_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicles: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean
+          make: string
+          model: string
+          nickname: string | null
+          owner_id: string
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          make: string
+          model: string
+          nickname?: string | null
+          owner_id: string
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          make?: string
+          model?: string
+          nickname?: string | null
+          owner_id?: string
+          updated_at?: string
+          year?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      set_primary_vehicle: {
+        Args: { target_vehicle_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

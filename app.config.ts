@@ -64,6 +64,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     plugins: [
       'expo-router',
       [
+        // Wording shown by iOS and Android when the app first asks for photos
+        // or the camera. Expo Go uses its own wording; these apply to our builds.
+        'expo-image-picker',
+        {
+          photosPermission:
+            'Fast Boys India uses your photos so you can add pictures of your car.',
+          cameraPermission:
+            'Fast Boys India uses your camera so you can take pictures of your car.',
+        },
+      ],
+      [
         // Wires Sentry into the native iOS/Android projects and uploads source maps during
         // EAS builds so crash reports show our real file names and line numbers.
         '@sentry/react-native/expo',

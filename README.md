@@ -90,6 +90,7 @@ app/                  Screens. File path = route (Expo Router)
   (tabs)/             Main app: Feed, Crews, Map, Garage, Profile
 src/
   features/<name>/    Everything for one feature: api.ts (Supabase calls), hooks.ts, Redux slice
+                      garage/ also has photos.ts (pick, shrink, upload) and components/ (forms)
   services/           The ONLY place third-party SDKs are imported (Supabase, Sentry, PostHog…)
   store/              Redux store
   lib/                Small helpers: env vars, query client, phone numbers
@@ -98,6 +99,21 @@ src/
   types/database.ts   Generated database types
 supabase/migrations/  Database changes as SQL, applied in order
 ```
+
+## The garage (Phase 2)
+
+- **Tables:** `vehicles`, `vehicle_photos`, `modifications`. Photos and mods have no owner of
+  their own; permission is checked through the car they belong to.
+- **Photos** live in a private `vehicle-photos` storage bucket, under `<user id>/<car id>/`.
+  The storage rules check that first folder, so people can only write into their own space.
+  The app displays them with short-lived signed links, refreshed hourly.
+- **Before upload** every photo is resized to 1600px and saved at 70% quality, which turns a
+  4MB camera photo into roughly 300KB. That matters on Indian mobile data.
+- **Limits:** 10 photos per car (enforced by a database trigger, not just the app), 5MB per file.
+- **Mod categories** are a fixed list in the database. Adding one means a migration plus a label
+  in `MOD_CATEGORY_LABELS`.
+- **The main car** is switched through the `set_primary_vehicle` database function, so there is
+  never a moment with two main cars.
 
 ## House rules
 

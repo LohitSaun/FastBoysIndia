@@ -175,6 +175,20 @@ supabase/migrations/  Database changes as SQL, applied in order
 - **No background uploading.** With the app closed nothing runs; the drive waits safely on the
   phone. Same honest limit as live location and SOS.
 
+## Data Saver (Phase 6c)
+
+- **Why it exists:** mobile data in India is cheap but not unlimited, and plenty of people drive on
+  a fixed daily pack. Data Saver is a promise the app won't quietly spend it.
+- **A switch on the Profile tab.** It's Redux, not a database row, because it's a choice about this
+  phone and has to be readable the instant a screen renders — and it's mirrored into device storage,
+  because a data-saving setting that silently resets on restart is worse than not having one.
+- **What it changes**, all listed together in `settingsSlice.ts` rather than scattered across
+  screens: the garage list stops downloading a cover photo per car (it shows the placeholder and
+  loads the photos when you open a car), nearby-hazard checks drop from every minute to every five,
+  the explored map draws 600 squares instead of 2000, and the feed asks for shorter pages and never
+  autoplays.
+- **Default off.** Nobody should meet a degraded app without choosing it.
+
 ## SOS (Phase 5d)
 
 - **What it does:** hold the button for 1.5s and the phone opens WhatsApp to your emergency

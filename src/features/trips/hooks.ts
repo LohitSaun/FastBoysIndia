@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { selectUserId } from '@/features/auth/authSlice';
+import { useDataSaver } from '@/features/settings/hooks';
+import { SQUARE_LIMIT, limitFor } from '@/features/settings/settingsSlice';
 import { trackerFor, type DrivePosition, type LocationPermission } from '@/services/location';
 import { useAppSelector } from '@/store';
 
@@ -58,12 +60,20 @@ export function useSquaresInView(bounds: {
   minY: number;
   maxY: number;
 } | null) {
+  // Each square is a row to download and a shape for the map to draw. Data
+  // Saver asks for far fewer, so the map stays usable on a slow connection.
+  const dataSaver = useDataSaver();
+  const limit = limitFor(SQUARE_LIMIT, dataSaver);
+
   return useQuery({
-    queryKey: tripKeys.squares(bounds ? Object.values(bounds).join(',') : 'none'),
+    queryKey: [
+      ...tripKeys.squares(bounds ? Object.values(bounds).join(',') : 'none'),
+      limit,
+    ],
     // skipToken is how this project says "nothing to fetch yet". Passing an
     // undefined function with enabled:false looks equivalent but TanStack Query
     // rejects it.
-    queryFn: bounds ? () => fetchSquaresInView(bounds) : skipToken,
+    queryFn: bounds ? () => fetchSquaresInView(bounds, limit) : skipToken,
     staleTime: 60_000,
   });
 }

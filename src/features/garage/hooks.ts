@@ -7,6 +7,7 @@
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { selectUserId } from '@/features/auth/authSlice';
+import { useDataSaver } from '@/features/settings/hooks';
 import { analytics } from '@/services/monitoring/analytics';
 import { useAppSelector } from '@/store';
 
@@ -182,11 +183,15 @@ export function useDeletePhoto(vehicleId: string) {
 /** Cover photo links for the garage list, keyed by car id. */
 export function useCoverPhotoUrls(vehicles: Vehicle[] | undefined) {
   const vehicleIds = (vehicles ?? []).map((vehicle) => vehicle.id);
+  // The garage list is the app's biggest unasked-for download: one photo per
+  // car, every time it's opened. In Data Saver the list shows the placeholder
+  // icon instead, and the photos load when a car is actually opened.
+  const dataSaver = useDataSaver();
 
   return useQuery({
     queryKey: ['vehicle-covers', ...vehicleIds] as const,
     queryFn:
-      vehicleIds.length > 0
+      vehicleIds.length > 0 && !dataSaver
         ? async () => {
             const coverPaths = await fetchCoverPhotos(vehicleIds);
             const urls = await createSignedUrls(Object.values(coverPaths));

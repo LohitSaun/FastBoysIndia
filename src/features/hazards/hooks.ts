@@ -1,6 +1,9 @@
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
+import { useDataSaver } from '@/features/settings/hooks';
+import { HAZARD_STALE_MS, limitFor } from '@/features/settings/settingsSlice';
+
 import type { DrivePosition } from '@/services/location';
 
 import {
@@ -32,12 +35,16 @@ export function useHazardsNear(
   center: { latitude: number; longitude: number } | null,
   radiusM = 5000,
 ) {
+  // Hazards are re-checked as you drive. In Data Saver that drops from once a
+  // minute to once every five, which matters on a long drive.
+  const dataSaver = useDataSaver();
+
   return useQuery({
     queryKey: center
       ? hazardKeys.near(center.latitude, center.longitude, radiusM)
       : ['hazards-near', 'none'],
     queryFn: center ? () => fetchHazardsNear(center.latitude, center.longitude, radiusM) : skipToken,
-    staleTime: 60_000,
+    staleTime: limitFor(HAZARD_STALE_MS, dataSaver),
   });
 }
 

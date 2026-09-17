@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
@@ -7,6 +7,7 @@ import { TextField } from '@/components/TextField';
 import { selectPhone } from '@/features/auth/authSlice';
 import { useSignOut } from '@/features/auth/hooks';
 import { useActiveCities, useMyProfile } from '@/features/profile/hooks';
+import { useDataSaver, useToggleDataSaver } from '@/features/settings/hooks';
 import { useEmergencyContact, useSaveEmergencyContact } from '@/features/sos/hooks';
 import { formatForDisplay, isValidNationalNumber, sanitizeNationalInput } from '@/lib/phone';
 import { useAppSelector } from '@/store';
@@ -31,6 +32,8 @@ export default function ProfileScreen() {
           <InfoRow label="Phone" value={phone ? formatForDisplay(phone) : '—'} />
         </View>
 
+        <DataSaverSection />
+
         <EmergencyContactSection />
 
         <View style={styles.footer}>
@@ -48,6 +51,40 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
     </Screen>
+  );
+}
+
+/**
+ * Data Saver.
+ *
+ * Mobile data in India is cheap but not unlimited, and plenty of people drive
+ * on a fixed daily pack. This is a promise the app won't quietly spend it.
+ */
+function DataSaverSection() {
+  const dataSaver = useDataSaver();
+  const toggle = useToggleDataSaver();
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.switchRow}>
+        <View style={styles.switchText}>
+          <Text style={styles.sectionTitle}>Data Saver</Text>
+          <Text style={styles.hint}>
+            {dataSaver
+              ? 'Videos wait for a tap, car photos load when you open a car, and the map checks for hazards less often.'
+              : 'Everything loads as normal.'}
+          </Text>
+        </View>
+        <Switch
+          value={dataSaver}
+          onValueChange={() => {
+            toggle();
+          }}
+          trackColor={{ true: colors.primary, false: colors.border }}
+          accessibilityLabel="Data Saver"
+        />
+      </View>
+    </View>
   );
 }
 
@@ -231,6 +268,15 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  switchText: {
+    flex: 1,
+    gap: spacing.xs,
   },
   buttonHalf: {
     flex: 1,

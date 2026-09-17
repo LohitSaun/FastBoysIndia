@@ -25,6 +25,7 @@ import { Provider as ReduxProvider } from 'react-redux';
 import { selectAuthStatus } from '@/features/auth/authSlice';
 import { useAuthListener } from '@/features/auth/useAuthListener';
 import { isProfileComplete, useMyProfile } from '@/features/profile/hooks';
+import { useRestoreSettings } from '@/features/settings/hooks';
 import { queryClient } from '@/lib/queryClient';
 import { initSentry, withSentry } from '@/services/monitoring/sentry';
 import { useScreenTracking } from '@/services/monitoring/useScreenTracking';
@@ -37,6 +38,7 @@ initSentry();
 function RootNavigator() {
   useAuthListener();
   useScreenTracking();
+  useRestoreSettings();
 
   const status = useAppSelector(selectAuthStatus);
   const profile = useMyProfile();

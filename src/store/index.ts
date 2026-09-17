@@ -10,11 +10,13 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import { authReducer } from '@/features/auth/authSlice';
 import { convoyReducer } from '@/features/convoys/convoySlice';
+import { settingsReducer } from '@/features/settings/settingsSlice';
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     convoy: convoyReducer,
+    settings: settingsReducer,
   },
 });
 

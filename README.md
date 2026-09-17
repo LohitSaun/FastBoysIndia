@@ -165,8 +165,10 @@ supabase/migrations/  Database changes as SQL, applied in order
     only by the person who wrote the row.
   - **Three reports and it comes down by itself**, via a trigger. Low on purpose: with nobody
     watching a queue overnight, briefly hiding something costs far less than leaving it up.
-  - **Block** somebody and their clips are filtered out inside `feed_page()`, so a blocked
-    person's video never reaches the phone at all. They are not told.
+  - **Block** somebody and the clips are hidden **both ways** inside `feed_page()`, so neither of
+    you sees the other. People block because somebody is targeting them, and leaving that person
+    able to keep watching everything you post would fix the wrong half. They are not told; from
+    their side it just looks as though you stopped posting.
   - **The author can always see their own clip**, including one that's been taken down, so it can
     say what happened instead of silently vanishing.
 - **Paging is by timestamp, not an offset.** The feed gains rows at the top while you scroll, and

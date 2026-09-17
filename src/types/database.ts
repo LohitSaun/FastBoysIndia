@@ -284,7 +284,7 @@ export type Database = {
           location: unknown
           note: string | null
           removed_at: string | null
-          reporter_id: string
+          reporter_id: string | null
         }
         Insert: {
           created_at?: string
@@ -294,7 +294,7 @@ export type Database = {
           location: unknown
           note?: string | null
           removed_at?: string | null
-          reporter_id: string
+          reporter_id?: string | null
         }
         Update: {
           created_at?: string
@@ -304,7 +304,7 @@ export type Database = {
           location?: unknown
           note?: string | null
           removed_at?: string | null
-          reporter_id?: string
+          reporter_id?: string | null
         }
         Relationships: []
       }
@@ -639,6 +639,7 @@ export type Database = {
       }
       crew_of_convoy: { Args: { target_convoy_id: string }; Returns: string }
       current_tier: { Args: never; Returns: string }
+      delete_my_account: { Args: never; Returns: undefined }
       feed_page: {
         Args: { p_before?: string; p_city_id?: string; p_limit?: number }
         Returns: Database["public"]["CompositeTypes"]["feed_post"][]

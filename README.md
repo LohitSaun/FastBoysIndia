@@ -155,6 +155,25 @@ supabase/migrations/  Database changes as SQL, applied in order
   route through the same location wrapper the real GPS uses. It keeps testing on Indian roads
   regardless of where the developer is, and it never appears in a real build (`__DEV__` only).
 
+## Deleting your account
+
+- **Apple rejects an app that lets you create an account but not delete one**, and it has to really
+  delete rather than deactivate. India's DPDP Act points the same way. It's on the Profile tab,
+  behind two confirmations because there is no undo and no grace period.
+- **Files first, then rows.** Photos and clips live in Storage, which the database can't reach, so
+  the app removes those itself (it's allowed to: every storage rule checks that the first folder of
+  the path is your own user id). Then one database function removes the auth row and every table's
+  foreign key takes the rest. Files first on purpose — a few leftover files are a far smaller
+  problem than an account that is half deleted and can still sign in.
+- **No Edge Function and no service key in the app.** `delete_my_account()` is SECURITY DEFINER and
+  runs with the migration owner's rights, which are enough to remove the auth row.
+- **Two cascades were wrong and had to be fixed first:**
+  - **A crew you own is handed to whoever joined it first**, not destroyed. Leaving should never
+    delete other people's things. It's only deleted if you were the last one in it.
+  - **Hazards you reported stay on the map**, with the link to you removed (`on delete set null`).
+    A pothole or a speed camera is community safety data that is already anonymous; wiping it when
+    somebody leaves helps nobody, and what deletion is actually about is the link to the person.
+
 ## The video feed (Phase 6a)
 
 - **`posts`** is one short clip: a path into the private `post-videos` bucket, an optional caption

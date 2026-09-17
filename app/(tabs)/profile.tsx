@@ -4,6 +4,7 @@ import { Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { TextField } from '@/components/TextField';
+import { useDeleteAccount } from '@/features/account/hooks';
 import { selectPhone } from '@/features/auth/authSlice';
 import { useSignOut } from '@/features/auth/hooks';
 import { useActiveCities, useMyProfile } from '@/features/profile/hooks';
@@ -36,6 +37,8 @@ export default function ProfileScreen() {
 
         <EmergencyContactSection />
 
+        <DeleteAccountSection />
+
         <View style={styles.footer}>
           {signOut.isError ? (
             <Text style={styles.error}>
@@ -51,6 +54,71 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
     </Screen>
+  );
+}
+
+/**
+ * Deleting the account.
+ *
+ * Two confirmations, because it cannot be undone and there is no grace period.
+ * The first says what goes and what doesn't; the second is the point of no
+ * return.
+ */
+function DeleteAccountSection() {
+  const deleteAccount = useDeleteAccount();
+
+  const confirmFinal = () => {
+    Alert.alert(
+      'Last chance',
+      "Everything is deleted straight away. There's no undo and no way to get the account back.",
+      [
+        { text: 'Keep my account', style: 'cancel' },
+        {
+          text: 'Delete it',
+          style: 'destructive',
+          onPress: () =>
+            deleteAccount.mutate(undefined, {
+              onError: () =>
+                Alert.alert(
+                  "Couldn't delete the account",
+                  'Nothing has been deleted. Check your connection and try again.',
+                ),
+            }),
+        },
+      ],
+    );
+  };
+
+  const start = () => {
+    Alert.alert(
+      'Delete your account?',
+      [
+        'This removes your profile, cars, photos, mods, drives, explored map, clips and crew memberships.',
+        '',
+        'A crew you own is handed to whoever joined it first, so your crew keeps going without you.',
+        '',
+        'Hazards you reported stay on the map, but stop being linked to you.',
+      ].join('\n'),
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Continue', style: 'destructive', onPress: confirmFinal },
+      ],
+    );
+  };
+
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Delete account</Text>
+      <Text style={styles.hint}>
+        Removes your account and everything in it, for good. This cannot be undone.
+      </Text>
+      <Button
+        title="Delete my account"
+        variant="secondary"
+        onPress={start}
+        loading={deleteAccount.isPending}
+      />
+    </View>
   );
 }
 

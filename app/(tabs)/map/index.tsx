@@ -23,6 +23,7 @@ import {
 import { SosButton } from '@/features/sos/components/SosButton';
 import {
   useExploredCount,
+  usePendingTrips,
   useSquaresInView,
   useTripRecorder,
   useTripStats,
@@ -57,6 +58,7 @@ export default function ExploredMapScreen() {
   const stats = useTripStats();
   const exploredCount = useExploredCount();
   const recorder = useTripRecorder({ simulated });
+  const pending = usePendingTrips();
 
   const tier = useTier();
   const isSubscriber = tier.data === 'pro' || tier.data === 'premium';
@@ -168,9 +170,29 @@ export default function ExploredMapScreen() {
 
   const handleStop = async () => {
     const result = await recorder.stop();
-    if (result && !result.saved) {
+    if (!result || result.saved) return;
+
+    if (result.reason === 'too-short') {
       Alert.alert('Drive not saved', 'That drive was too short to be worth keeping.');
+      return;
     }
+    Alert.alert(
+      'Saved on your phone',
+      "Couldn't reach the server, so the drive is waiting here. It uploads by itself next time you have signal.",
+    );
+  };
+
+  /** A drive the app has given up retrying. Never deleted without asking. */
+  const handleStuck = (id: string) => {
+    Alert.alert(
+      'This drive keeps failing',
+      'It has been tried several times and the server keeps refusing it. Try once more, or throw it away.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Try again', onPress: () => pending.retry() },
+        { text: 'Discard', style: 'destructive', onPress: () => pending.discard(id) },
+      ],
+    );
   };
 
   return (
@@ -272,6 +294,27 @@ export default function ExploredMapScreen() {
           ) : null}
         </View>
 
+        {pending.count > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() =>
+              pending.stuck[0] ? handleStuck(pending.stuck[0].id) : pending.retry()
+            }
+            style={styles.pendingRow}
+          >
+            <Ionicons
+              name={pending.stuck.length > 0 ? 'alert-circle' : 'cloud-upload-outline'}
+              size={18}
+              color={pending.stuck.length > 0 ? colors.danger : colors.primary}
+            />
+            <Text style={styles.pendingText}>
+              {pending.stuck.length > 0
+                ? `${pending.stuck.length} drive${pending.stuck.length > 1 ? 's' : ''} won't upload. Tap to sort it out.`
+                : `${pending.count} drive${pending.count > 1 ? 's' : ''} waiting to upload${pending.isRetrying ? '…' : '. Tap to retry.'}`}
+            </Text>
+          </Pressable>
+        ) : null}
+
         <SosButton knownPosition={recorder.lastPosition} />
 
         <Pressable
@@ -368,6 +411,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   warningBannerText: { ...typography.label, color: colors.onPrimary },
+  pendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pendingText: { ...typography.caption, color: colors.text, flex: 1 },
   linkText: { ...typography.label, color: colors.primary },
   devRow: {
     flexDirection: 'row',

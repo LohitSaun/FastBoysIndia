@@ -1,5 +1,6 @@
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
 import { selectUserId } from '@/features/auth/authSlice';
 import { trackerFor, type DrivePosition, type LocationPermission } from '@/services/location';
@@ -15,12 +16,24 @@ import {
   recordTrip,
 } from './api';
 import { cellFor, cellKey, distanceBetween, simplifyRoute, type Cell } from './grid';
+import {
+  MAX_ATTEMPTS,
+  clearDraft,
+  loadPendingTrips,
+  queueTrip,
+  recoverDraft,
+  removePendingTrip,
+  saveDraft,
+  updatePendingTrip,
+  type PendingTrip,
+} from './pending';
 
 export const tripKeys = {
   trips: ['trips'] as const,
   stats: ['trip-stats'] as const,
   explored: ['explored-count'] as const,
   squares: (bounds: string) => ['explored-squares', bounds] as const,
+  pending: ['pending-trips'] as const,
 };
 
 function logInDev(error: unknown) {
@@ -84,6 +97,120 @@ export function useEraseExploredMap() {
   });
 }
 
+/**
+ * One attempt at uploading a queued drive.
+ *
+ * The two kinds of failure need opposite treatment:
+ *
+ *   No answer at all (no signal, request timed out) is temporary. Keep it
+ *   queued and try again later.
+ *
+ *   An answer that refuses the drive is not going to change on its own. The
+ *   usual cause is the car having been deleted since, which record_trip
+ *   rejects because it checks you own it. Rather than lose the drive, the car
+ *   is dropped from it and it goes again — you keep the distance and the
+ *   squares, the drive just loses its link to a car that no longer exists.
+ */
+async function uploadPending(trip: PendingTrip): Promise<'uploaded' | 'retry' | 'stuck'> {
+  try {
+    await recordTrip(trip);
+    await removePendingTrip(trip.id);
+    return 'uploaded';
+  } catch (error) {
+    logInDev(error);
+    const attempts = trip.attempts + 1;
+
+    // A Supabase error object carries a code; a network failure doesn't.
+    const wasRefused = typeof error === 'object' && error !== null && 'code' in error;
+    if (wasRefused && trip.vehicleId) {
+      await updatePendingTrip(trip.id, { vehicleId: null, attempts });
+      return 'retry';
+    }
+
+    const stuck = attempts >= MAX_ATTEMPTS;
+    await updatePendingTrip(trip.id, { attempts, stuck });
+    return stuck ? 'stuck' : 'retry';
+  }
+}
+
+/**
+ * Drives waiting to upload.
+ *
+ * Retried when the screen opens and whenever the app comes back to the
+ * foreground. There is deliberately no network-detection library: trying and
+ * failing costs less than asking the phone whether it's online, and it can't
+ * be wrong about it.
+ */
+export function usePendingTrips() {
+  const queryClient = useQueryClient();
+
+  const query = useQuery({ queryKey: tripKeys.pending, queryFn: loadPendingTrips });
+
+  const retry = useMutation({
+    mutationFn: async () => {
+      const queue = await loadPendingTrips();
+      for (const trip of queue) {
+        // Ones the app has given up on wait for the person to decide.
+        if (trip.stuck) continue;
+        await uploadPending(trip);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.pending });
+      queryClient.invalidateQueries({ queryKey: tripKeys.trips });
+      queryClient.invalidateQueries({ queryKey: tripKeys.stats });
+      queryClient.invalidateQueries({ queryKey: tripKeys.explored });
+      queryClient.invalidateQueries({ queryKey: ['explored-squares'] });
+    },
+  });
+
+  const discard = useMutation({
+    mutationFn: (id: string) => removePendingTrip(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: tripKeys.pending }),
+    onError: logInDev,
+  });
+
+  // The listener below outlives any one render, so it reaches the current
+  // mutate function through a ref. Refs are written in an effect because React
+  // forbids writing them while rendering.
+  const retryRef = useRef(retry.mutate);
+  useEffect(() => {
+    retryRef.current = retry.mutate;
+  }, [retry.mutate]);
+
+  // On open: rescue a drive the app died in the middle of, then try the queue.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await recoverDraft();
+      if (cancelled) return;
+      await queryClient.invalidateQueries({ queryKey: tripKeys.pending });
+      retryRef.current();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [queryClient]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') retryRef.current();
+    });
+    return () => subscription.remove();
+  }, []);
+
+  const trips = query.data ?? [];
+
+  return {
+    trips,
+    count: trips.length,
+    stuck: trips.filter((trip) => trip.stuck),
+    isRetrying: retry.isPending,
+    retry: retry.mutate,
+    discard: discard.mutate,
+  };
+}
+
 export type RecorderStatus = 'idle' | 'starting' | 'recording' | 'saving';
 
 /**
@@ -106,6 +233,12 @@ export function useTripRecorder({ simulated }: { simulated: boolean }) {
   const [newSquares, setNewSquares] = useState(0);
   const [lastPosition, setLastPosition] = useState<DrivePosition | null>(null);
 
+  // Mirrors of the two numbers the checkpoint needs. They're in state for the
+  // screen to show, and in refs so the 30-second timer can read the latest
+  // values without restarting on every GPS reading.
+  const distanceRef = useRef(0);
+  const maxSpeedRef = useRef(0);
+
   const pointsRef = useRef<{ latitude: number; longitude: number }[]>([]);
   const cellsRef = useRef<Map<string, Cell>>(new Map());
   const startedAtRef = useRef<number | null>(null);
@@ -126,6 +259,36 @@ export function useTripRecorder({ simulated }: { simulated: boolean }) {
   // Always stop listening if the screen goes away mid-drive.
   useEffect(() => () => stopWatchingRef.current?.(), []);
 
+  /**
+   * A copy of the drive on the phone, refreshed every 30 seconds.
+   *
+   * If the app is killed — iOS reclaiming a backgrounded app, a flat battery,
+   * a crash — this is what turns 200km of driving into 30 seconds of loss
+   * instead of all of it. It reads from refs, so checkpointing never causes a
+   * re-render of the screen.
+   */
+  useEffect(() => {
+    if (status !== 'recording') return;
+
+    const checkpoint = () => {
+      const startedAt = startedAtRef.current;
+      if (!startedAt || pointsRef.current.length < 2) return;
+
+      void saveDraft({
+        vehicleId: vehicleIdRef.current,
+        startedAt: new Date(startedAt).toISOString(),
+        lastSeenAt: new Date().toISOString(),
+        distanceM: distanceRef.current,
+        maxSpeedKph: maxSpeedRef.current,
+        route: pointsRef.current,
+        cells: [...cellsRef.current.values()],
+      });
+    };
+
+    const timer = setInterval(checkpoint, 30_000);
+    return () => clearInterval(timer);
+  }, [status]);
+
   const start = useCallback(
     async (vehicleId: string | null) => {
       if (status !== 'idle') return;
@@ -143,6 +306,8 @@ export function useTripRecorder({ simulated }: { simulated: boolean }) {
       cellsRef.current = new Map();
       startedAtRef.current = Date.now();
       vehicleIdRef.current = vehicleId;
+      distanceRef.current = 0;
+      maxSpeedRef.current = 0;
       setDistanceM(0);
       setDurationS(0);
       setMaxSpeedKph(0);
@@ -156,7 +321,10 @@ export function useTripRecorder({ simulated }: { simulated: boolean }) {
         if (previous) {
           const step = distanceBetween(previous, point);
           // Ignore jumps: a GPS fix can wander by tens of metres while parked.
-          if (step >= 5) setDistanceM((current) => current + step);
+          if (step >= 5) {
+            distanceRef.current += step;
+            setDistanceM(distanceRef.current);
+          }
         }
 
         const cell = cellFor(point.latitude, point.longitude);
@@ -167,7 +335,8 @@ export function useTripRecorder({ simulated }: { simulated: boolean }) {
         }
 
         if (position.speedKph !== null) {
-          setMaxSpeedKph((current) => Math.max(current, position.speedKph ?? 0));
+          maxSpeedRef.current = Math.max(maxSpeedRef.current, position.speedKph);
+          setMaxSpeedKph(maxSpeedRef.current);
         }
         setLastPosition(position);
       });
@@ -199,30 +368,45 @@ export function useTripRecorder({ simulated }: { simulated: boolean }) {
 
     // A drive that never moved isn't worth saving.
     if (points.length < 2 || distanceM < 50) {
+      void clearDraft();
       setStatus('idle');
-      return { saved: false as const };
+      return { saved: false as const, reason: 'too-short' as const };
     }
 
+    const payload = {
+      vehicleId: vehicleIdRef.current,
+      startedAt: new Date(startedAt).toISOString(),
+      endedAt: new Date().toISOString(),
+      distanceM,
+      durationS: Math.max(1, Math.round((Date.now() - startedAt) / 1000)),
+      maxSpeedKph,
+      route: simplifyRoute(points),
+      cells: [...cellsRef.current.values()],
+    };
+
     try {
-      await saveMutation.mutateAsync({
-        vehicleId: vehicleIdRef.current,
-        startedAt: new Date(startedAt).toISOString(),
-        endedAt: new Date().toISOString(),
-        distanceM,
-        durationS: Math.max(1, Math.round((Date.now() - startedAt) / 1000)),
-        maxSpeedKph,
-        route: simplifyRoute(points),
-        cells: [...cellsRef.current.values()],
-      });
+      await saveMutation.mutateAsync(payload);
+      await clearDraft();
       return { saved: true as const };
+    } catch (error) {
+      // The point of the queue. Pressing stop in a dead zone used to lose the
+      // whole drive; now it waits on the phone and goes up later. The start
+      // time travels with it, so a late upload still lands in the right month
+      // on the leaderboards.
+      logInDev(error);
+      await queueTrip(payload);
+      await clearDraft();
+      void queryClient.invalidateQueries({ queryKey: tripKeys.pending });
+      return { saved: false as const, reason: 'queued' as const };
     } finally {
       setStatus('idle');
     }
-  }, [distanceM, maxSpeedKph, saveMutation, status]);
+  }, [distanceM, maxSpeedKph, queryClient, saveMutation, status]);
 
   const cancel = useCallback(() => {
     stopWatchingRef.current?.();
     stopWatchingRef.current = null;
+    void clearDraft();
     setStatus('idle');
   }, []);
 

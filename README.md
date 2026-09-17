@@ -154,6 +154,27 @@ supabase/migrations/  Database changes as SQL, applied in order
   route through the same location wrapper the real GPS uses. It keeps testing on Indian roads
   regardless of where the developer is, and it never appears in a real build (`__DEV__` only).
 
+## The offline drive queue (Phase 6b)
+
+- **The bug this fixes:** press stop in a dead zone and `record_trip` fails, and until now the
+  whole drive was gone. Indian highways have plenty of places with no signal.
+- **A failed save is queued on the phone** instead of lost, and retried when the app opens and
+  whenever it returns to the foreground. The drive keeps its real `started_at`, so a late upload
+  still lands in the right month on the leaderboards.
+- **A drive in progress is checkpointed every 30 seconds**, so the app being killed — iOS
+  reclaiming memory, a flat battery, a crash — costs half a minute rather than 200km. A checkpoint
+  found at startup becomes a finished drive waiting to upload.
+- **Two kinds of failure, treated oppositely.** No answer at all is temporary, so it stays queued.
+  An answer that *refuses* the drive will not fix itself — usually the car was deleted since, which
+  `record_trip` rejects — so the car is dropped and it goes again. You keep the distance and the
+  squares.
+- **Nothing is ever deleted silently.** After `MAX_ATTEMPTS` the app stops retrying and shows the
+  drive with a Discard button. Your data, your call.
+- **No network-detection library.** Trying and failing costs less than asking the phone whether
+  it's online, and it can't be wrong about it.
+- **No background uploading.** With the app closed nothing runs; the drive waits safely on the
+  phone. Same honest limit as live location and SOS.
+
 ## SOS (Phase 5d)
 
 - **What it does:** hold the button for 1.5s and the phone opens WhatsApp to your emergency

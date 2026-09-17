@@ -153,6 +153,27 @@ supabase/migrations/  Database changes as SQL, applied in order
   route through the same location wrapper the real GPS uses. It keeps testing on Indian roads
   regardless of where the developer is, and it never appears in a real build (`__DEV__` only).
 
+## Breakdown alerts (Phase 5c)
+
+- **`breakdowns`** holds one row per stopped car on a convoy: where it stopped, an optional short
+  note ("flat tyre"), and when it was cleared.
+- **This is the only place the app stores a position.** Live convoy positions travel over Realtime
+  and are never written down. A breakdown has to survive being missed — somebody who opens the app
+  a minute later, or whose phone dropped signal, still needs to know a car is stranded, and a
+  Realtime message that already went past can't tell them. It's one point, not a trail, because a
+  stopped car doesn't move. Nothing is written unless you press the button and confirm.
+- **Realtime is only a nudge.** The broadcast on `convoy:<id>:alerts` carries no location and no
+  name, just "something changed on this drive". Every phone then asks the database, which applies
+  its own rules. So a tampered-with app can't announce a breakdown that isn't there. A 30-second
+  refetch covers a nudge that never arrives.
+- **Ghost Mode is deliberately overridden**, and the confirm dialog says so. An alert without a
+  position is no use to anyone, but nobody should be surprised by it either.
+- **Pressing the button twice** moves your existing alert rather than stacking a second one, which
+  a partial unique index enforces.
+- **It clears itself** when the drive ends (a trigger on `convoys`), so a forgotten alert doesn't
+  follow the crew around. You can also clear it yourself, or delete it outright.
+- **Convoy only.** Broken down on your own is the SOS case, not this one.
+
 ## Leaderboards (Phase 5a)
 
 - **The Ranks tab** shows two boards — your city and your crew — each either all-time or for the
@@ -196,6 +217,9 @@ supabase/migrations/  Database changes as SQL, applied in order
 2. **Wrap third-party SDKs** in `src/services/` so they can be swapped. Maps and background
    location will follow this pattern in Phases 3–4.
 3. **Every table has Row Level Security** with explicit policies. The app uses a public key,
-   so RLS is what protects user data.
+   so RLS is what protects user data. When testing a policy through `supabase db query`, the
+   connection is the `postgres` role, which **bypasses RLS entirely** — a check written without
+   `set local role authenticated` passes however wrong the policy is. Always switch the role and
+   set `request.jwt.claims` together.
 4. **No personal data in monitoring.** No phone numbers or locations go to Sentry or PostHog.
 5. **Env vars starting with `EXPO_PUBLIC_` are public.** Never put secrets in them.

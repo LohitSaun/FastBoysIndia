@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      breakdowns: {
+        Row: {
+          convoy_id: string
+          created_at: string
+          id: string
+          location: unknown
+          note: string | null
+          resolved_at: string | null
+          user_id: string
+        }
+        Insert: {
+          convoy_id: string
+          created_at?: string
+          id?: string
+          location: unknown
+          note?: string | null
+          resolved_at?: string | null
+          user_id: string
+        }
+        Update: {
+          convoy_id?: string
+          created_at?: string
+          id?: string
+          location?: unknown
+          note?: string | null
+          resolved_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "breakdowns_convoy_id_fkey"
+            columns: ["convoy_id"]
+            isOneToOne: false
+            referencedRelation: "convoys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cities: {
         Row: {
           center: unknown
@@ -485,6 +523,16 @@ export type Database = {
       }
     }
     Functions: {
+      breakdowns_for_convoy: {
+        Args: { p_convoy_id: string }
+        Returns: Database["public"]["CompositeTypes"]["breakdown_alert"][]
+        SetofOptions: {
+          from: "*"
+          to: "breakdown_alert"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       crew_of_convoy: { Args: { target_convoy_id: string }; Returns: string }
       current_tier: { Args: never; Returns: string }
       generate_invite_code: { Args: never; Returns: string }
@@ -547,6 +595,15 @@ export type Database = {
         }
         Returns: string
       }
+      report_breakdown: {
+        Args: {
+          p_convoy_id: string
+          p_latitude: number
+          p_longitude: number
+          p_note?: string
+        }
+        Returns: string
+      }
       report_hazard: {
         Args: {
           p_kind: string
@@ -570,6 +627,16 @@ export type Database = {
       [_ in never]: never
     }
     CompositeTypes: {
+      breakdown_alert: {
+        id: string | null
+        user_id: string | null
+        display_name: string | null
+        latitude: number | null
+        longitude: number | null
+        note: string | null
+        created_at: string | null
+        is_you: boolean | null
+      }
       hazard_nearby: {
         id: string | null
         kind: string | null

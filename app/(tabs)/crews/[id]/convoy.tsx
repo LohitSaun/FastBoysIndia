@@ -1,9 +1,12 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { selectUserId } from '@/features/auth/authSlice';
+import { BREAKDOWN_REASONS, type BreakdownAlert } from '@/features/breakdowns/api';
+import { useConvoyBreakdowns, useNearestBreakdown } from '@/features/breakdowns/hooks';
 import { useCrew } from '@/features/crews/hooks';
 import { ghostModeReset, ghostModeToggled, selectGhostMode } from '@/features/convoys/convoySlice';
 import {
@@ -14,9 +17,24 @@ import {
   useParticipants,
 } from '@/features/convoys/hooks';
 import { useMyProfile } from '@/features/profile/hooks';
+import { distanceBetween, formatDistance } from '@/features/trips/grid';
+import { locationTracker } from '@/services/location';
 import { AppMap, type AppMapMarker } from '@/services/maps/AppMap';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { colors, radius, spacing, typography } from '@/theme';
+
+/**
+ * "just now", "12 min ago", "2 h ago".
+ *
+ * Outside the component on purpose: it reads the clock, and React expects
+ * anything called while rendering to give the same answer every time.
+ */
+function describeAge(createdAt: string): string {
+  const minutes = Math.round((Date.now() - new Date(createdAt).getTime()) / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  return `${Math.round(minutes / 60)} h ago`;
+}
 
 export default function ConvoyScreen() {
   const { id: crewId } = useLocalSearchParams<{ id: string }>();
@@ -36,6 +54,9 @@ export default function ConvoyScreen() {
 
   const myName = profile.data?.display_name ?? 'Me';
   const { myPosition, others, permission } = useConvoyLive(convoy.data?.id, myName);
+
+  const breakdowns = useConvoyBreakdowns(convoy.data?.id);
+  const nearest = useNearestBreakdown(myPosition, breakdowns.alerts);
 
   if (convoy.isPending) {
     return (
@@ -77,7 +98,83 @@ export default function ConvoyScreen() {
       label: other.displayName,
       kind: 'other' as const,
     })),
+    // Drawn last so a stopped car sits on top of its own fading position dot.
+    ...breakdowns.alerts.map((alert) => ({
+      id: `breakdown-${alert.id}`,
+      latitude: alert.latitude,
+      longitude: alert.longitude,
+      label: `${alert.isYou ? 'You' : (alert.displayName ?? 'Someone')} — broken down`,
+      kind: 'other' as const,
+      tint: colors.danger,
+      onPress: () => showBreakdown(alert),
+    })),
   ];
+
+  /** Tapping a red pin: who it is, what's wrong, and how long they've waited. */
+  function showBreakdown(alert: BreakdownAlert) {
+    const distance =
+      myPosition && !alert.isYou
+        ? `${formatDistance(Math.round(distanceBetween(myPosition, alert)))} away`
+        : null;
+
+    Alert.alert(
+      alert.isYou ? "You've broken down" : `${alert.displayName ?? 'Someone'} has broken down`,
+      [alert.note, distance, `Reported ${describeAge(alert.createdAt)}`]
+        .filter(Boolean)
+        .join('\n'),
+      alert.isYou
+        ? [
+            { text: 'Close', style: 'cancel' },
+            { text: "I'm sorted", onPress: () => breakdowns.resolve.mutate(alert.id) },
+          ]
+        : [{ text: 'Close', style: 'cancel' }],
+    );
+  }
+
+  /**
+   * Reporting a breakdown. The confirm text says out loud that this shares your
+   * location even in Ghost Mode, because an alert without a position is no use
+   * to anyone and nobody should be surprised by it.
+   */
+  const handleBreakdown = () => {
+    const submit = async (note: string | null) => {
+      const position = myPosition ?? (await locationTracker.current());
+      if (!position) {
+        Alert.alert(
+          "Can't tell where you are",
+          'Allow location for the app, then try again. Ring someone in the crew in the meantime.',
+        );
+        return;
+      }
+      breakdowns.report.mutate({
+        latitude: position.latitude,
+        longitude: position.longitude,
+        note,
+      });
+    };
+
+    Alert.alert(
+      "Tell the crew you've broken down?",
+      ghostMode
+        ? "They'll see exactly where you are, even with Ghost Mode on."
+        : "They'll see exactly where you are. What's wrong?",
+      [
+        ...BREAKDOWN_REASONS.map((reason) => ({
+          text: reason,
+          onPress: () => {
+            void submit(reason);
+          },
+        })),
+        {
+          text: "Don't say",
+          onPress: () => {
+            void submit(null);
+          },
+        },
+        { text: 'Cancel', style: 'cancel' as const },
+      ],
+    );
+  };
 
   const handleEnd = () => {
     Alert.alert('End this drive?', 'Everyone stops sharing their location.', [
@@ -125,7 +222,31 @@ export default function ConvoyScreen() {
         )}
       </View>
 
+      {nearest ? (
+        <View style={styles.alertBanner}>
+          <Ionicons name="warning" size={18} color={colors.text} />
+          <Text style={styles.alertBannerText} numberOfLines={2}>
+            {`${nearest.alert.displayName ?? 'Someone'} has broken down — ${formatDistance(Math.round(nearest.metres))} away`}
+            {nearest.alert.note ? ` (${nearest.alert.note})` : ''}
+          </Text>
+        </View>
+      ) : null}
+
       <View style={styles.panel}>
+        {breakdowns.mine ? (
+          <View style={styles.strandedRow}>
+            <Text style={styles.strandedText}>
+              The crew knows you&apos;ve broken down.
+              {breakdowns.mine.note ? ` (${breakdowns.mine.note})` : ''}
+            </Text>
+            <Button
+              title="I'm sorted"
+              onPress={() => breakdowns.resolve.mutate(breakdowns.mine?.id ?? '')}
+              loading={breakdowns.resolve.isPending}
+            />
+          </View>
+        ) : null}
+
         <View style={styles.row}>
           <View style={styles.rowText}>
             <Text style={styles.rowTitle}>Ghost Mode</Text>
@@ -154,6 +275,21 @@ export default function ConvoyScreen() {
 
         {permission === 'unknown' && !myPosition ? (
           <Text style={styles.hint}>Waiting for your first location reading…</Text>
+        ) : null}
+
+        {breakdowns.mine ? null : (
+          <Button
+            title="I've broken down"
+            variant="secondary"
+            onPress={handleBreakdown}
+            loading={breakdowns.report.isPending}
+          />
+        )}
+
+        {breakdowns.report.isError ? (
+          <Text style={styles.warning}>
+            {"Couldn't tell the crew. Check your signal and try again."}
+          </Text>
         ) : null}
 
         {canEnd ? (
@@ -226,4 +362,27 @@ const styles = StyleSheet.create({
   },
   statValue: { ...typography.subtitle, color: colors.text },
   statLabel: { ...typography.caption, color: colors.textMuted },
+  alertBanner: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    right: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.danger,
+  },
+  alertBannerText: { ...typography.label, color: colors.text, flex: 1 },
+  strandedRow: {
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    backgroundColor: colors.surface,
+  },
+  strandedText: { ...typography.label, color: colors.text },
+  warning: { ...typography.caption, color: colors.danger, textAlign: 'center' },
 });

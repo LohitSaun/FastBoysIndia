@@ -85,6 +85,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             'Fast Boys India shares your location with your crew while you are on a drive.',
         },
       ],
+      // The video player used by the feed. Left on its defaults: no background
+      // playback and no picture-in-picture, so a clip stops when you leave the
+      // app rather than carrying on over your music.
+      'expo-video',
       [
         // Wires Sentry into the native iOS/Android projects and uploads source maps during
         // EAS builds so crash reports show our real file names and line numbers.

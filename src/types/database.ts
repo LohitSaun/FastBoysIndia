@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      blocked_users: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       breakdowns: {
         Row: {
           convoy_id: string
@@ -334,6 +352,92 @@ export type Database = {
           },
         ]
       }
+      post_reports: {
+        Row: {
+          created_at: string
+          post_id: string
+          reason: string
+          reporter_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          reason: string
+          reporter_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          reason?: string
+          reporter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_reports_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      posts: {
+        Row: {
+          author_id: string
+          caption: string | null
+          city_id: string | null
+          created_at: string
+          duration_s: number | null
+          id: string
+          removed_at: string | null
+          removed_reason: string | null
+          thumbnail_path: string | null
+          vehicle_id: string | null
+          video_path: string
+        }
+        Insert: {
+          author_id: string
+          caption?: string | null
+          city_id?: string | null
+          created_at?: string
+          duration_s?: number | null
+          id?: string
+          removed_at?: string | null
+          removed_reason?: string | null
+          thumbnail_path?: string | null
+          vehicle_id?: string | null
+          video_path: string
+        }
+        Update: {
+          author_id?: string
+          caption?: string | null
+          city_id?: string | null
+          created_at?: string
+          duration_s?: number | null
+          id?: string
+          removed_at?: string | null
+          removed_reason?: string | null
+          thumbnail_path?: string | null
+          vehicle_id?: string | null
+          video_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -535,6 +639,16 @@ export type Database = {
       }
       crew_of_convoy: { Args: { target_convoy_id: string }; Returns: string }
       current_tier: { Args: never; Returns: string }
+      feed_page: {
+        Args: { p_before?: string; p_city_id?: string; p_limit?: number }
+        Returns: Database["public"]["CompositeTypes"]["feed_post"][]
+        SetofOptions: {
+          from: "*"
+          to: "feed_post"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       generate_invite_code: { Args: never; Returns: string }
       hazard_lifetime: { Args: { p_kind: string }; Returns: string }
       hazards_near: {
@@ -582,6 +696,7 @@ export type Database = {
         }
       }
       my_home_city: { Args: never; Returns: string }
+      post_report_threshold: { Args: never; Returns: number }
       record_trip: {
         Args: {
           p_cells: Json
@@ -613,6 +728,10 @@ export type Database = {
         }
         Returns: string
       }
+      report_post: {
+        Args: { p_post_id: string; p_reason: string }
+        Returns: undefined
+      }
       set_primary_vehicle: {
         Args: { target_vehicle_id: string }
         Returns: undefined
@@ -636,6 +755,20 @@ export type Database = {
         note: string | null
         created_at: string | null
         is_you: boolean | null
+      }
+      feed_post: {
+        id: string | null
+        author_id: string | null
+        display_name: string | null
+        main_car: string | null
+        video_path: string | null
+        thumbnail_path: string | null
+        caption: string | null
+        city_id: string | null
+        duration_s: number | null
+        created_at: string | null
+        is_yours: boolean | null
+        reported_by_you: boolean | null
       }
       hazard_nearby: {
         id: string | null

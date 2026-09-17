@@ -43,6 +43,8 @@ export default function TabsLayout() {
         name="index"
         options={{ title: 'Feed', tabBarIcon: tabIcon('play-circle', 'play-circle-outline') }}
       />
+      {/* Reachable from the feed's + button, but not a tab of its own. */}
+      <Tabs.Screen name="new-post" options={{ href: null }} />
       <Tabs.Screen
         name="crews"
         options={{ title: 'Crews', tabBarIcon: tabIcon('people', 'people-outline') }}

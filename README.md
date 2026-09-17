@@ -88,6 +88,7 @@ app/                  Screens. File path = route (Expo Router)
   (auth)/             Sign-in and OTP screens
   (onboarding)/       First-run profile setup
   (tabs)/             Main app: Feed, Crews, Map, Ranks, Garage, Profile
+                      new-post.tsx is in here too, but hidden from the tab bar
 src/
   features/<name>/    Everything for one feature: api.ts (Supabase calls), hooks.ts, Redux slice
                       garage/ also has photos.ts (pick, shrink, upload) and components/ (forms)
@@ -153,6 +154,35 @@ supabase/migrations/  Database changes as SQL, applied in order
 - **Simulated drives:** in development there's a switch that replays a Bandra → Sea Link → Worli
   route through the same location wrapper the real GPS uses. It keeps testing on Indian roads
   regardless of where the developer is, and it never appears in a real build (`__DEV__` only).
+
+## The video feed (Phase 6a)
+
+- **`posts`** is one short clip: a path into the private `post-videos` bucket, an optional caption
+  and car, and the author's city copied in at posting time so the feed can be filtered without
+  rewriting history when somebody moves.
+- **Moderation is not optional**, so it shipped with the feature rather than after it:
+  - **Report** a clip, privately. Nobody can see who reported what — `post_reports` is readable
+    only by the person who wrote the row.
+  - **Three reports and it comes down by itself**, via a trigger. Low on purpose: with nobody
+    watching a queue overnight, briefly hiding something costs far less than leaving it up.
+  - **Block** somebody and their clips are filtered out inside `feed_page()`, so a blocked
+    person's video never reaches the phone at all. They are not told.
+  - **The author can always see their own clip**, including one that's been taken down, so it can
+    say what happened instead of silently vanishing.
+- **Paging is by timestamp, not an offset.** The feed gains rows at the top while you scroll, and
+  an offset would show the same clip twice.
+- **Clips are private files played through one-hour signed links**, so a clip taken down stops
+  being reachable rather than living on at a public URL somebody saved.
+- **Hard limits instead of compression:** 30 seconds, 60MB, enforced by the picker, the app and
+  the bucket. We can't re-encode video on the phone without a heavy native library, so the honest
+  answer is to refuse a file that's too big and say why.
+- **Playback goes through `src/services/video/AppVideo.tsx`**, the same wrapper pattern as maps and
+  location. Moving to a hosted video service later — one that can drop quality on a weak signal,
+  which this cannot — is a change to that file and the upload path, not to the feed.
+- **Muted by default, and only the clip on screen plays.** Sound arriving unannounced is the rudest
+  thing a feed can do, and on mobile data a muted single loop is the cheaper one.
+- **Deliberately absent:** likes, comments and follows. A feed people can post to and report is all
+  of v1; the social layer can be added later without touching any of this.
 
 ## The offline drive queue (Phase 6b)
 

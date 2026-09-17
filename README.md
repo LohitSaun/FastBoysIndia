@@ -91,6 +91,7 @@ app/                  Screens. File path = route (Expo Router)
 src/
   features/<name>/    Everything for one feature: api.ts (Supabase calls), hooks.ts, Redux slice
                       garage/ also has photos.ts (pick, shrink, upload) and components/ (forms)
+                      sos/ has no api.ts: nothing about it touches the server
   services/           The ONLY place third-party SDKs are imported (Supabase, Sentry, PostHog…)
   store/              Redux store
   lib/                Small helpers: env vars, query client, phone numbers
@@ -152,6 +153,30 @@ supabase/migrations/  Database changes as SQL, applied in order
 - **Simulated drives:** in development there's a switch that replays a Bandra → Sea Link → Worli
   route through the same location wrapper the real GPS uses. It keeps testing on Indian roads
   regardless of where the developer is, and it never appears in a real build (`__DEV__` only).
+
+## SOS (Phase 5d)
+
+- **What it does:** hold the button for 1.5s and the phone opens WhatsApp to your emergency
+  contact — or the share sheet if you haven't set one — with "I need help", a
+  `https://maps.google.com/?q=lat,lng` link and the coordinates written out as text too.
+- **What it deliberately does not do.** It doesn't contact the emergency services, doesn't send
+  anything by itself, and stores nothing. A button that promised to summon help would have to keep
+  working with the app closed and the phone in a pocket, which needs background execution and push
+  notifications we don't have yet. Automatic crash detection is worse: get it wrong and you've
+  either cried wolf or stayed silent when it counted. So the wording is "share my location", never
+  "call for help", and the message never claims help is on the way.
+- **Hold, not tap.** A tap is too easy to trigger in a pocket, and a confirmation dialog is the
+  wrong answer for something urgent — it adds a second decision at the worst moment. Letting go
+  cancels it.
+- **No location fix still sends.** In a basement or a tunnel the message goes anyway, saying the
+  phone couldn't work out where you are and asking them to call. A silent button is the worst
+  possible outcome here.
+- **The emergency contact never leaves the phone.** It's in `AsyncStorage`, not Postgres: it's
+  somebody else's name and number and they never agreed to being in our database, and the number is
+  only ever used to build a message on this device. The cost is honest — a new phone or a reinstall
+  means setting it again.
+- **No new dependencies.** React Native's own `Share` and `Linking`, and `AsyncStorage`, which is
+  already here for the login session.
 
 ## Breakdown alerts (Phase 5c)
 

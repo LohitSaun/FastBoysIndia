@@ -219,9 +219,12 @@ create type public.hazard_nearby as (
 /**
  * Hazards within a radius of a point.
  *
- * Speed cameras are only included for paying users. The "free users can see
- * camera pins but only subscribers get the driving alert" split is done in the
- * app by asking for cameras or not; this flag is the hard limit behind it.
+ * Speed cameras are for paying accounts only, and that is decided here rather
+ * than in the app: a free account never receives a camera row, whatever it
+ * asks for, so hiding a pin or a button is not what enforces this.
+ *
+ * p_include_cameras only lets a paying account opt OUT — for a quieter map, or
+ * a data-saver mode later. It can never opt a free account in.
  */
 create function public.hazards_near(
   p_latitude double precision,

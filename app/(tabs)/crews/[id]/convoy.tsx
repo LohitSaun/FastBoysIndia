@@ -17,6 +17,7 @@ import {
   useParticipants,
 } from '@/features/convoys/hooks';
 import { useMyProfile } from '@/features/profile/hooks';
+import { SosButton } from '@/features/sos/components/SosButton';
 import { distanceBetween, formatDistance } from '@/features/trips/grid';
 import { locationTracker } from '@/services/location';
 import { AppMap, type AppMapMarker } from '@/services/maps/AppMap';
@@ -291,6 +292,8 @@ export default function ConvoyScreen() {
             {"Couldn't tell the crew. Check your signal and try again."}
           </Text>
         ) : null}
+
+        <SosButton knownPosition={myPosition} />
 
         {canEnd ? (
           <Button

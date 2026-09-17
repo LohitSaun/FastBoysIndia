@@ -20,6 +20,7 @@ import {
   useTier,
   useVoteHazard,
 } from '@/features/hazards/hooks';
+import { SosButton } from '@/features/sos/components/SosButton';
 import {
   useExploredCount,
   useSquaresInView,
@@ -270,6 +271,8 @@ export default function ExploredMapScreen() {
             </Text>
           ) : null}
         </View>
+
+        <SosButton knownPosition={recorder.lastPosition} />
 
         <Pressable
           accessibilityRole="button"

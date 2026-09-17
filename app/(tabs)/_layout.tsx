@@ -52,6 +52,10 @@ export default function TabsLayout() {
         options={{ title: 'Map', tabBarIcon: tabIcon('map', 'map-outline') }}
       />
       <Tabs.Screen
+        name="ranks"
+        options={{ title: 'Ranks', tabBarIcon: tabIcon('trophy', 'trophy-outline') }}
+      />
+      <Tabs.Screen
         name="garage"
         options={{ title: 'Garage', tabBarIcon: tabIcon('car-sport', 'car-sport-outline') }}
       />

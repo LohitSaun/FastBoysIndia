@@ -87,7 +87,7 @@ app/                  Screens. File path = route (Expo Router)
   _layout.tsx         Providers + who-sees-what gate (loading / auth / onboarding / tabs)
   (auth)/             Sign-in and OTP screens
   (onboarding)/       First-run profile setup
-  (tabs)/             Main app: Feed, Crews, Map, Garage, Profile
+  (tabs)/             Main app: Feed, Crews, Map, Ranks, Garage, Profile
 src/
   features/<name>/    Everything for one feature: api.ts (Supabase calls), hooks.ts, Redux slice
                       garage/ also has photos.ts (pick, shrink, upload) and components/ (forms)
@@ -152,6 +152,25 @@ supabase/migrations/  Database changes as SQL, applied in order
 - **Simulated drives:** in development there's a switch that replays a Bandra → Sea Link → Worli
   route through the same location wrapper the real GPS uses. It keeps testing on Indian roads
   regardless of where the developer is, and it never appears in a real build (`__DEV__` only).
+
+## Leaderboards (Phase 5a)
+
+- **The Ranks tab** shows two boards — your city and your crew — each either all-time or for the
+  current month, ranked on distance driven.
+- **Ranking people means reading everyone's drives**, which is exactly what `trips` and
+  `explored_squares` are meant to prevent. So instead of loosening those tables, the boards come
+  out of `leaderboard_for_city()` and `leaderboard_for_crew()`. They return only what a board
+  shows: a name, a main car, distance, squares, drives and whether the row is yours. No routes, no
+  individual drives, no timestamps of where anyone was.
+- **City boards are open to any signed-in user**; crew boards check membership and refuse an
+  outsider. Both refuse a caller who isn't signed in.
+- **A month is passed as `'2026-09'`**, and anything else is rejected by the database rather than
+  trusted from the app.
+- **Somebody with no drives is left off a city board** but stays on their crew's board, because a
+  crew is a fixed list of people and a zero is part of the competition.
+- **If you're outside the top 100**, the board shows your own totals in a footer instead of your
+  position. Working out a rank across a whole city for one person is a database change we don't
+  need while the cities are small.
 
 ## Hazards, speed cameras and tiers (Phase 5b)
 

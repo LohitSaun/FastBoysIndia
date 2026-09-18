@@ -1,73 +1,265 @@
 # Fast Boys India
 
-A community app for car enthusiasts in Mumbai, Delhi and Bangalore: crews, convoys, garages and exploration.
+A community app for car enthusiasts in **Mumbai, Delhi and Bangalore**.
 
-**Stack:** React Native + Expo SDK 57 (custom dev client) · Expo Router · Supabase (Postgres + PostGIS, Auth, Storage, Realtime) · Redux Toolkit · TanStack Query · Sentry · PostHog
+- **Garage** — your cars, their photos and every mod
+- **Crews and convoys** — drive together on a live map, with Ghost Mode when you want to disappear
+- **Explored map** — every road you drive unlocks a square, fog-of-war style
+- **Ranks** — city and crew leaderboards
+- **Hazards** — report potholes, waterlogging and fog; speed camera alerts for Pro
+- **Safety** — breakdown alerts for your crew, and a one-hold SOS
+- **Feed** — short clips of cars, with reporting and blocking built in
+
+Built with React Native, Expo and Supabase.
 
 ---
 
-## Prerequisites
+## Getting started
 
-- **Node 24.** If you use `fnm`, it switches automatically in this folder (see `.node-version`).
-- **EAS CLI:** `npm install -g eas-cli`
-- **A test phone.** Android works today. iPhone needs an Apple Developer account first.
+This gets the app running on your own phone in about 15 minutes. You don't need Xcode, Android
+Studio or a developer account — the free **Expo Go** app does the work.
 
-## First-time setup
+### What you need
 
-### 1. Install and configure
+- A computer — Mac, Windows or Linux
+- An **iPhone** or an **Android** phone
+- Both on the **same Wi-Fi network**
+- Access to this repository (it's private, so you need to have been invited)
+
+### Step 1 — Install Node.js
+
+Node.js runs the tools that build the app. You need **version 24**.
+
+1. Go to [nodejs.org](https://nodejs.org) and download the **LTS** version
+2. Open the installer and click through it
+3. Check it worked — open **Terminal** (Mac) or **Command Prompt** (Windows) and type:
+
+```bash
+node --version
+```
+
+You should see something starting with `v24`.
+
+> Already use `fnm` or `nvm`? This folder has a `.node-version` file, so they'll switch to the
+> right version automatically.
+
+### Step 2 — Get the code
+
+```bash
+git clone https://github.com/LohitSaun/FastBoysIndia.git
+```
+
+```bash
+cd FastBoysIndia
+```
 
 ```bash
 npm install
-cp .env.example .env   # then fill in the values (see comments in the file)
 ```
 
-### 2. Supabase
+The last one downloads everything the app depends on. It takes a few minutes the first time.
 
-1. Create a project at supabase.com: region **South Asia (Mumbai)**, and tick
-   **Enable automatic RLS** under Security. The second migration locks down the
-   `rls_auto_enable()` function that this option creates, so `db:push` fails without it.
-2. Link this folder to it and apply the database migrations:
-   ```bash
-   npx supabase login
-   npx supabase link --project-ref <your-project-ref>
-   npm run db:push     # creates tables, security policies, PostGIS
-   npm run db:types    # regenerates src/types/database.ts from the real database
-   ```
-3. In the dashboard, under **Authentication → Sign In / Providers**:
-   - **Phone:** enable it, then set:
-     - **Test Phone Numbers and OTPs:** `919876543210=123456`, so you can sign in without
-       a real SMS provider. Also set **Test OTPs Valid Until**, because test numbers stop
-       working after that date.
-     - **SMS OTP Expiry:** `300` (5 minutes). The default of 60 seconds is too short when
-       SMS arrives late on a weak signal.
-     - **Twilio fields:** the dashboard won't save Phone until the 3 Twilio fields have
-       values, even if you only use test numbers. For local testing, type `placeholder` in
-       each. Real numbers won't receive an SMS until a real provider is configured (which
-       in India also needs DLT registration).
-   - **Email:** disable it. Phone is our only sign-in method, and leaving email on would let
-     people create accounts through the API another way.
+> **No `git`?** Install it from [git-scm.com](https://git-scm.com), or use
+> [GitHub Desktop](https://desktop.github.com) and choose **Clone a repository**.
 
-### 3. Build the dev app (once, and again whenever native code changes)
+### Step 3 — Add the settings file
+
+The app needs to know which backend to talk to. That goes in a file called `.env`, which is never
+uploaded to GitHub.
 
 ```bash
-eas login
-eas init                                             # links the project to your Expo account
-eas build --profile development --platform android   # builds in the cloud, gives you an install link
+cp .env.example .env
 ```
 
-Install the APK on your phone. It appears as **Fast Boys (Dev)**.
+Open `.env` in any text editor and fill in these two lines:
 
-## Day-to-day development
+```
+EXPO_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
+```
+
+**Where the values come from:**
+
+- **You own the project:** Supabase dashboard → your project → **Connect**. Copy the **Project URL**
+  and the **Publishable key**.
+- **Someone invited you:** ask them for these two values.
+- **Starting from scratch:** follow [Setting up your own backend](#setting-up-your-own-backend)
+  below first.
+
+Leave everything else in `.env` empty. Sentry and PostHog are optional and switch themselves off
+when their values are blank.
+
+> Only ever put the **publishable** key here. Never the secret key or the database password —
+> anything in this file ends up inside the app, where anyone could read it.
+
+### Step 4 — Start the app
+
+Log in to Expo once, with the same account you'll use in Expo Go on your phone:
+
+```bash
+npx expo login
+```
+
+Then start it:
 
 ```bash
 npx expo start
 ```
 
-Open **Fast Boys (Dev)** on your phone and connect to the dev server. Code changes reload instantly.
+A **QR code** appears in the terminal. Leave this window open — the app runs from here while you
+use it.
 
-You only need a **new EAS build** after:
-- adding a package with native code
-- changing `app.config.ts`, permissions or icons
+### Step 5 — Open it on your phone
+
+1. Install **Expo Go** from the [App Store](https://apps.apple.com/app/expo-go/id982107779) or
+   [Google Play](https://play.google.com/store/apps/details?id=host.exp.exponent)
+2. Open Expo Go and **sign in with the same Expo account** as Step 4
+3. Scan the QR code:
+   - **iPhone:** open the normal **Camera** app, point it at the code, and tap the banner
+   - **Android:** tap **Scan QR code** inside Expo Go
+4. If your phone asks to find devices on your local network, tap **Allow**
+
+The app loads on your phone. Change any code on your computer and it reloads by itself.
+
+### Step 6 — Sign in
+
+The backend has a **test phone number** set up, so you can sign in without a real SMS:
+
+| | |
+| --- | --- |
+| **Phone number** | `98765 43210` |
+| **Code** | `123456` |
+
+No text message is sent — any code other than `123456` is rejected.
+
+Then pick a display name and a home city, and you're in.
+
+> **Testing from outside India?** The simulated drive on the **Map** tab replays a route through
+> Mumbai, so you can try drives, the explored map and hazards from anywhere. It only appears in
+> development, never in a real build.
+
+---
+
+## If something goes wrong
+
+| What you see | What to do |
+| --- | --- |
+| Expo Go says **"sign in to Expo CLI as lohitsaun"** | Run `npx expo login` on your computer with the **same account** that's signed into Expo Go, then restart with `npx expo start`. If you're not the owner, you need to be added to the Expo project first. |
+| Expo Go **can't connect** or times out | Phone and computer must be on the **same Wi-Fi**. Office and hotel networks often block this — try a phone hotspot. On iPhone, check **Settings → Expo Go → Local Network** is on. |
+| **"Phone sign-in is not switched on"** | The backend's Phone provider is off. See step 3 of [Setting up your own backend](#setting-up-your-own-backend). |
+| The **test number stopped working** | Test numbers have an expiry date in Supabase. Move it forward under **Test OTPs Valid Until**. |
+| A **blank page** at `localhost:8081` in your browser | That's expected. It's a phone app, not a website — open it with Expo Go instead. |
+| `npm install` shows **warnings** | Warnings are fine. Only a line starting with `ERR!` is a real problem. |
+| `node --version` shows **something other than 24** | Install Node 24 from [nodejs.org](https://nodejs.org), then close and reopen the terminal. |
+| **"Unable to resolve module"** after pulling new code | Someone added a package. Run `npm install` again. |
+| TypeScript complains about a **route that exists** | Route types are rebuilt by the dev server. Run `npx expo start` once and the error goes away. |
+
+---
+
+## Setting up your own backend
+
+Only needed if you're starting a **brand new** Supabase project rather than using an existing one.
+
+<details>
+<summary><strong>Show the steps</strong></summary>
+
+### 1. Create the project
+
+1. Sign up at [supabase.com](https://supabase.com) and click **New project**
+2. Region: **South Asia (Mumbai)**, so the app is fast for people in India
+3. Under **Security**, tick **Enable automatic RLS**. A migration locks down a function this option
+   creates, so setting up the database fails without it.
+4. Save the **database password** somewhere safe. You won't need it in the app.
+
+### 2. Create the tables
+
+This creates every table, security rule and storage bucket in one go:
+
+```bash
+npx supabase login
+```
+
+```bash
+npx supabase link --project-ref <your-project-ref>
+```
+
+```bash
+npm run db:push
+```
+
+Your project ref is the part of the Project URL before `.supabase.co`.
+
+### 3. Turn on phone sign-in
+
+In the dashboard: **Authentication → Sign In / Providers**.
+
+**Phone** — switch it on, then set:
+
+- **Test Phone Numbers and OTPs:** `919876543210=123456`
+- **Test OTPs Valid Until:** a date a few months ahead. Test numbers stop working after it.
+- **SMS OTP Expiry:** `300`. The default of 60 seconds is too short when a text arrives late on a
+  weak signal.
+- **The three Twilio boxes:** type `placeholder` in each. The dashboard won't save Phone without
+  them, even when you only use test numbers.
+
+**Email** — switch it **off**. Phone is the only way into this app, and leaving email on would let
+people create accounts another way.
+
+Click **Save**.
+
+> **Real phone numbers won't get a text yet.** That needs a real SMS provider, and in India it also
+> needs **DLT registration**, which usually requires a registered business.
+
+### 4. Copy the keys into `.env`
+
+**Connect** → copy the **Project URL** and **Publishable key** into `.env`, as in
+[Step 3](#step-3--add-the-settings-file) above.
+
+### 5. Check it
+
+```bash
+npx expo start
+```
+
+Sign in with the test number. If you reach the name and city screen, everything is connected.
+
+</details>
+
+---
+
+## Building a real app for the App Store
+
+Expo Go is for development. To put the app in the App Store or Play Store — or to use features Expo
+Go can't run, like location tracking with the app closed — you build the app itself with **EAS**,
+Expo's build service.
+
+That needs:
+
+- An **Apple Developer** account ($99/year) for iPhone
+- A **Google Play Console** account ($25 once) for Android
+
+```bash
+npm install -g eas-cli
+```
+
+```bash
+eas login
+```
+
+```bash
+eas build --profile development --platform ios
+```
+
+`development`, `preview` and `production` are set up in `eas.json`. Each installs as a separate app
+(**Fast Boys (Dev)**, **Fast Boys (Preview)**, **Fast Boys India**), so they can sit side by side.
+
+You need a **new build** only after adding a package with native code, or changing
+`app.config.ts`, permissions or icons. Everything else reloads instantly.
+
+> ⚠️ The production bundle ID `in.fastboys.app` becomes **permanent** the moment the app is
+> published. Changing it later means a brand-new store listing.
+
+---
 
 ## Scripts
 
@@ -93,14 +285,23 @@ src/
   features/<name>/    Everything for one feature: api.ts (Supabase calls), hooks.ts, Redux slice
                       garage/ also has photos.ts (pick, shrink, upload) and components/ (forms)
                       sos/ has no api.ts: nothing about it touches the server
-  services/           The ONLY place third-party SDKs are imported (Supabase, Sentry, PostHog…)
+  services/           The ONLY place third-party SDKs are imported
+    supabase/         The one Supabase client
+    maps/             AppMap: every map in the app goes through this
+    location/         GPS, plus the simulated Mumbai drive used in development
+    video/            AppVideo: every clip in the feed plays through this
+    monitoring/       Sentry and PostHog
   store/              Redux store
   lib/                Small helpers: env vars, query client, phone numbers
-  components/         Shared UI: Screen, Button, TextField
+  components/         Shared UI: Screen, Button, TextField, ChipGroup, HoldButton
   theme/              Colours, spacing, text sizes
   types/database.ts   Generated database types
 supabase/migrations/  Database changes as SQL, applied in order
 ```
+
+# How it works
+
+Notes on each part of the app — what it does, and the decisions behind it that aren't obvious from the code. Read the relevant one before changing that part.
 
 ## The garage (Phase 2)
 
@@ -155,24 +356,86 @@ supabase/migrations/  Database changes as SQL, applied in order
   route through the same location wrapper the real GPS uses. It keeps testing on Indian roads
   regardless of where the developer is, and it never appears in a real build (`__DEV__` only).
 
-## Deleting your account
+## Leaderboards (Phase 5a)
 
-- **Apple rejects an app that lets you create an account but not delete one**, and it has to really
-  delete rather than deactivate. India's DPDP Act points the same way. It's on the Profile tab,
-  behind two confirmations because there is no undo and no grace period.
-- **Files first, then rows.** Photos and clips live in Storage, which the database can't reach, so
-  the app removes those itself (it's allowed to: every storage rule checks that the first folder of
-  the path is your own user id). Then one database function removes the auth row and every table's
-  foreign key takes the rest. Files first on purpose — a few leftover files are a far smaller
-  problem than an account that is half deleted and can still sign in.
-- **No Edge Function and no service key in the app.** `delete_my_account()` is SECURITY DEFINER and
-  runs with the migration owner's rights, which are enough to remove the auth row.
-- **Two cascades were wrong and had to be fixed first:**
-  - **A crew you own is handed to whoever joined it first**, not destroyed. Leaving should never
-    delete other people's things. It's only deleted if you were the last one in it.
-  - **Hazards you reported stay on the map**, with the link to you removed (`on delete set null`).
-    A pothole or a speed camera is community safety data that is already anonymous; wiping it when
-    somebody leaves helps nobody, and what deletion is actually about is the link to the person.
+- **The Ranks tab** shows two boards — your city and your crew — each either all-time or for the
+  current month, ranked on distance driven.
+- **Ranking people means reading everyone's drives**, which is exactly what `trips` and
+  `explored_squares` are meant to prevent. So instead of loosening those tables, the boards come
+  out of `leaderboard_for_city()` and `leaderboard_for_crew()`. They return only what a board
+  shows: a name, a main car, distance, squares, drives and whether the row is yours. No routes, no
+  individual drives, no timestamps of where anyone was.
+- **City boards are open to any signed-in user**; crew boards check membership and refuse an
+  outsider. Both refuse a caller who isn't signed in.
+- **A month is passed as `'2026-09'`**, and anything else is rejected by the database rather than
+  trusted from the app.
+- **Somebody with no drives is left off a city board** but stays on their crew's board, because a
+  crew is a fixed list of people and a zero is part of the competition.
+- **If you're outside the top 100**, the board shows your own totals in a footer instead of your
+  position. Working out a rank across a whole city for one person is a database change we don't
+  need while the cities are small.
+
+## Hazards, speed cameras and tiers (Phase 5b)
+
+- **`hazards`** holds pothole, waterlogging, fog, speed camera and other reports, each with a
+  location and an expiry (fog hours, waterlogging a day, potholes weeks, cameras a year).
+- **Reports are anonymous.** The reporter is stored for abuse handling but never returned: the
+  table has no general read rule, and every read goes through `hazards_near()`, which returns the
+  hazard without the reporter. You can read your own reports, nobody else's.
+- **`hazard_votes`**: "still there" or "it's gone". Three "gone" votes retire a hazard.
+- **`subscriptions`** records each person's tier (free / pro / premium). **No app code can write
+  to it** — there are no insert or update rules — so a billing provider sets it later. For now it's
+  set by hand with admin SQL.
+- **Speed cameras are gated in the database**, not in the screens: `hazards_near()` leaves them out
+  unless the caller's tier is pro or premium. Hiding a button would prove nothing, since anyone can
+  call the API directly.
+- **Speed limits are deliberately not implemented.** There's no reliable open dataset of Indian
+  road speed limits, so the app warns about camera locations rather than claiming to know limits.
+
+## Breakdown alerts (Phase 5c)
+
+- **`breakdowns`** holds one row per stopped car on a convoy: where it stopped, an optional short
+  note ("flat tyre"), and when it was cleared.
+- **This is the only place the app stores a position.** Live convoy positions travel over Realtime
+  and are never written down. A breakdown has to survive being missed — somebody who opens the app
+  a minute later, or whose phone dropped signal, still needs to know a car is stranded, and a
+  Realtime message that already went past can't tell them. It's one point, not a trail, because a
+  stopped car doesn't move. Nothing is written unless you press the button and confirm.
+- **Realtime is only a nudge.** The broadcast on `convoy:<id>:alerts` carries no location and no
+  name, just "something changed on this drive". Every phone then asks the database, which applies
+  its own rules. So a tampered-with app can't announce a breakdown that isn't there. A 30-second
+  refetch covers a nudge that never arrives.
+- **Ghost Mode is deliberately overridden**, and the confirm dialog says so. An alert without a
+  position is no use to anyone, but nobody should be surprised by it either.
+- **Pressing the button twice** moves your existing alert rather than stacking a second one, which
+  a partial unique index enforces.
+- **It clears itself** when the drive ends (a trigger on `convoys`), so a forgotten alert doesn't
+  follow the crew around. You can also clear it yourself, or delete it outright.
+- **Convoy only.** Broken down on your own is the SOS case, not this one.
+
+## SOS (Phase 5d)
+
+- **What it does:** hold the button for 1.5s and the phone opens WhatsApp to your emergency
+  contact — or the share sheet if you haven't set one — with "I need help", a
+  `https://maps.google.com/?q=lat,lng` link and the coordinates written out as text too.
+- **What it deliberately does not do.** It doesn't contact the emergency services, doesn't send
+  anything by itself, and stores nothing. A button that promised to summon help would have to keep
+  working with the app closed and the phone in a pocket, which needs background execution and push
+  notifications we don't have yet. Automatic crash detection is worse: get it wrong and you've
+  either cried wolf or stayed silent when it counted. So the wording is "share my location", never
+  "call for help", and the message never claims help is on the way.
+- **Hold, not tap.** A tap is too easy to trigger in a pocket, and a confirmation dialog is the
+  wrong answer for something urgent — it adds a second decision at the worst moment. Letting go
+  cancels it.
+- **No location fix still sends.** In a basement or a tunnel the message goes anyway, saying the
+  phone couldn't work out where you are and asking them to call. A silent button is the worst
+  possible outcome here.
+- **The emergency contact never leaves the phone.** It's in `AsyncStorage`, not Postgres: it's
+  somebody else's name and number and they never agreed to being in our database, and the number is
+  only ever used to build a message on this device. The cost is honest — a new phone or a reinstall
+  means setting it again.
+- **No new dependencies.** React Native's own `Share` and `Linking`, and `AsyncStorage`, which is
+  already here for the login session.
 
 ## The video feed (Phase 6a)
 
@@ -240,93 +503,32 @@ supabase/migrations/  Database changes as SQL, applied in order
   autoplays.
 - **Default off.** Nobody should meet a degraded app without choosing it.
 
-## SOS (Phase 5d)
+## Deleting your account
 
-- **What it does:** hold the button for 1.5s and the phone opens WhatsApp to your emergency
-  contact — or the share sheet if you haven't set one — with "I need help", a
-  `https://maps.google.com/?q=lat,lng` link and the coordinates written out as text too.
-- **What it deliberately does not do.** It doesn't contact the emergency services, doesn't send
-  anything by itself, and stores nothing. A button that promised to summon help would have to keep
-  working with the app closed and the phone in a pocket, which needs background execution and push
-  notifications we don't have yet. Automatic crash detection is worse: get it wrong and you've
-  either cried wolf or stayed silent when it counted. So the wording is "share my location", never
-  "call for help", and the message never claims help is on the way.
-- **Hold, not tap.** A tap is too easy to trigger in a pocket, and a confirmation dialog is the
-  wrong answer for something urgent — it adds a second decision at the worst moment. Letting go
-  cancels it.
-- **No location fix still sends.** In a basement or a tunnel the message goes anyway, saying the
-  phone couldn't work out where you are and asking them to call. A silent button is the worst
-  possible outcome here.
-- **The emergency contact never leaves the phone.** It's in `AsyncStorage`, not Postgres: it's
-  somebody else's name and number and they never agreed to being in our database, and the number is
-  only ever used to build a message on this device. The cost is honest — a new phone or a reinstall
-  means setting it again.
-- **No new dependencies.** React Native's own `Share` and `Linking`, and `AsyncStorage`, which is
-  already here for the login session.
-
-## Breakdown alerts (Phase 5c)
-
-- **`breakdowns`** holds one row per stopped car on a convoy: where it stopped, an optional short
-  note ("flat tyre"), and when it was cleared.
-- **This is the only place the app stores a position.** Live convoy positions travel over Realtime
-  and are never written down. A breakdown has to survive being missed — somebody who opens the app
-  a minute later, or whose phone dropped signal, still needs to know a car is stranded, and a
-  Realtime message that already went past can't tell them. It's one point, not a trail, because a
-  stopped car doesn't move. Nothing is written unless you press the button and confirm.
-- **Realtime is only a nudge.** The broadcast on `convoy:<id>:alerts` carries no location and no
-  name, just "something changed on this drive". Every phone then asks the database, which applies
-  its own rules. So a tampered-with app can't announce a breakdown that isn't there. A 30-second
-  refetch covers a nudge that never arrives.
-- **Ghost Mode is deliberately overridden**, and the confirm dialog says so. An alert without a
-  position is no use to anyone, but nobody should be surprised by it either.
-- **Pressing the button twice** moves your existing alert rather than stacking a second one, which
-  a partial unique index enforces.
-- **It clears itself** when the drive ends (a trigger on `convoys`), so a forgotten alert doesn't
-  follow the crew around. You can also clear it yourself, or delete it outright.
-- **Convoy only.** Broken down on your own is the SOS case, not this one.
-
-## Leaderboards (Phase 5a)
-
-- **The Ranks tab** shows two boards — your city and your crew — each either all-time or for the
-  current month, ranked on distance driven.
-- **Ranking people means reading everyone's drives**, which is exactly what `trips` and
-  `explored_squares` are meant to prevent. So instead of loosening those tables, the boards come
-  out of `leaderboard_for_city()` and `leaderboard_for_crew()`. They return only what a board
-  shows: a name, a main car, distance, squares, drives and whether the row is yours. No routes, no
-  individual drives, no timestamps of where anyone was.
-- **City boards are open to any signed-in user**; crew boards check membership and refuse an
-  outsider. Both refuse a caller who isn't signed in.
-- **A month is passed as `'2026-09'`**, and anything else is rejected by the database rather than
-  trusted from the app.
-- **Somebody with no drives is left off a city board** but stays on their crew's board, because a
-  crew is a fixed list of people and a zero is part of the competition.
-- **If you're outside the top 100**, the board shows your own totals in a footer instead of your
-  position. Working out a rank across a whole city for one person is a database change we don't
-  need while the cities are small.
-
-## Hazards, speed cameras and tiers (Phase 5b)
-
-- **`hazards`** holds pothole, waterlogging, fog, speed camera and other reports, each with a
-  location and an expiry (fog hours, waterlogging a day, potholes weeks, cameras a year).
-- **Reports are anonymous.** The reporter is stored for abuse handling but never returned: the
-  table has no general read rule, and every read goes through `hazards_near()`, which returns the
-  hazard without the reporter. You can read your own reports, nobody else's.
-- **`hazard_votes`**: "still there" or "it's gone". Three "gone" votes retire a hazard.
-- **`subscriptions`** records each person's tier (free / pro / premium). **No app code can write
-  to it** — there are no insert or update rules — so a billing provider sets it later. For now it's
-  set by hand with admin SQL.
-- **Speed cameras are gated in the database**, not in the screens: `hazards_near()` leaves them out
-  unless the caller's tier is pro or premium. Hiding a button would prove nothing, since anyone can
-  call the API directly.
-- **Speed limits are deliberately not implemented.** There's no reliable open dataset of Indian
-  road speed limits, so the app warns about camera locations rather than claiming to know limits.
+- **Apple rejects an app that lets you create an account but not delete one**, and it has to really
+  delete rather than deactivate. India's DPDP Act points the same way. It's on the Profile tab,
+  behind two confirmations because there is no undo and no grace period.
+- **Files first, then rows.** Photos and clips live in Storage, which the database can't reach, so
+  the app removes those itself (it's allowed to: every storage rule checks that the first folder of
+  the path is your own user id). Then one database function removes the auth row and every table's
+  foreign key takes the rest. Files first on purpose — a few leftover files are a far smaller
+  problem than an account that is half deleted and can still sign in.
+- **No Edge Function and no service key in the app.** `delete_my_account()` is SECURITY DEFINER and
+  runs with the migration owner's rights, which are enough to remove the auth row.
+- **Two cascades were wrong and had to be fixed first:**
+  - **A crew you own is handed to whoever joined it first**, not destroyed. Leaving should never
+    delete other people's things. It's only deleted if you were the last one in it.
+  - **Hazards you reported stay on the map**, with the link to you removed (`on delete set null`).
+    A pothole or a speed camera is community safety data that is already anonymous; wiping it when
+    somebody leaves helps nobody, and what deletion is actually about is the link to the person.
 
 ## House rules
 
 1. **Server data vs device state.** Anything stored in Supabase goes through TanStack Query.
    Device-only state (auth status, Ghost Mode, data-saver) goes in Redux. Never both.
-2. **Wrap third-party SDKs** in `src/services/` so they can be swapped. Maps and background
-   location will follow this pattern in Phases 3–4.
+2. **Wrap third-party SDKs** in `src/services/` so they can be swapped. Maps, location and video
+   already work this way: trying Mapbox, the paid background location tracker, or a hosted video
+   service is a change to one file there, not to the screens that use it.
 3. **Every table has Row Level Security** with explicit policies. The app uses a public key,
    so RLS is what protects user data. When testing a policy through `supabase db query`, the
    connection is the `postgres` role, which **bypasses RLS entirely** — a check written without

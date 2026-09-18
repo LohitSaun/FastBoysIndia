@@ -12,6 +12,15 @@ type AppVideoProps = {
 };
 
 /**
+ * expo-video's player is a native object changed by assignment. That assignment
+ * lives out here rather than in the component, because React's rules are about
+ * values it manages — and this is a handle to something outside React.
+ */
+function applyMuted(player: VideoPlayer, muted: boolean) {
+  player.muted = muted;
+}
+
+/**
  * The app's only video player.
  *
  * Screens never import a video library directly, the same rule maps and
@@ -22,15 +31,6 @@ type AppVideoProps = {
  * Clips loop and start muted. Sound arriving unannounced is the rudest thing a
  * feed can do, and on Indian mobile data a muted loop is also the cheaper one.
  */
-/**
- * expo-video's player is a native object changed by assignment. That assignment
- * lives out here rather than in the component, because React's rules are about
- * values it manages — and this is a handle to something outside React.
- */
-function applyMuted(player: VideoPlayer, muted: boolean) {
-  player.muted = muted;
-}
-
 export function AppVideo({ uri, playing, muted = true, style }: AppVideoProps) {
   const player = useVideoPlayer(uri, (instance) => {
     instance.loop = true;
